@@ -1,0 +1,7 @@
+<!--
+SPDX-FileCopyrightText: 2026 The Linux Foundation
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
+@AGENTS.md

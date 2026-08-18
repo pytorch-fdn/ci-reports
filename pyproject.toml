@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "ci-reports"
+version = "0.1.0"
+description = "AWS FOCUS-export-based extractor for the PyTorch Foundation Monthly CI Reports (LF-AWS portion)"
+requires-python = ">=3.10"
+dependencies = [
+    "duckdb",
+    "pytz",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ci_reports"]
