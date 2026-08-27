@@ -47,6 +47,29 @@ profile names are per-user (`aws-sso-cli` lets each person name theirs
 however they like). Have the user supply their own `AWS_PROFILE` via the
 environment when running or testing anything that touches AWS.
 
+## Keep the spec current
+
+`specs/monthly-ci-report.md` is the design record for this project — scope,
+decisions, data sources, and the Trend report's behavior. When a change
+alters something the spec describes (a data source, a schema field, a
+rendering/UI decision, a default like the Trend window size), update the
+spec in the same change, not as a follow-up:
+
+- Prefer editing the relevant section in place over appending a changelog
+  entry, so the spec always reads as the current state of the system.
+- If a change reverses or supersedes an earlier documented decision, say so
+  briefly in the updated text (e.g. "supersedes an earlier decision to
+  default to X") rather than silently deleting the old rationale.
+- If the change is exploratory/not yet decided, leave the spec alone and
+  note the open question under "Open questions" instead of guessing.
+
+Verification narratives (how a claim was checked, what bug was found) that
+are worth keeping belong in the spec itself, generalized to remove any real
+figures — not parked in an uncommitted scratch file. A scratch file living
+outside the repo is not a durable place to put anything a future agent
+would need; if it's worth remembering, it goes in a committed file (this
+one, the spec, or a code comment) in sanitized form, or it doesn't survive.
+
 ## Everything else
 
 Follow the conventions already documented in `README.md` (how the

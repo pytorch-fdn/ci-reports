@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PyTorch Foundation CI Reports</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+  .toggle { margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .toggle button { padding: 0.4rem 1rem; border: 1px solid #ccc; background: #f4f4f4; cursor: pointer; }
+  .toggle button.active { background: #4285F4; color: white; border-color: #4285F4; }
+  .toggle .window-toggle { font-size: 0.85rem; color: #4285F4; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0; }
+  #chart { width: 100%; height: 400px; }
+  .bar { cursor: pointer; }
+  .bar:hover { opacity: 0.75; }
+  .axis-label { font-size: 10px; fill: #666; text-anchor: end; }
+  .y-axis-label { font-size: 10px; fill: #666; text-anchor: end; }
+  .gridline { stroke: #eee; stroke-width: 1; }
+  .legend { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.8rem; }
+  .legend-group { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem 1.25rem; padding-top: 0.5rem; border-top: 1px solid #eee; }
+  .legend-group:first-child { padding-top: 0; border-top: none; }
+  .legend-group-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #898781; min-width: 2.5rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  .provenance-note { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+  #tooltip {
+    position: absolute; display: none; background: #333; color: white;
+    padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.85rem; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<h1>PyTorch Foundation CI Reports</h1>
+<p>Combined total (all owning accounts: LF, Meta, AMD) per month. Click a
+bar or point to open that month's detailed report.</p>
+
+<div class="toggle">
+  <button id="btn-financials" class="active">Financials</button>
+  <button id="btn-runtime">Runtime</button>
+  <button id="btn-window" class="window-toggle">Show all history</button>
+</div>
+
+<svg id="chart"></svg>
+<div id="legend" class="legend"></div>
+<div id="tooltip"></div>
+<p id="runtime-note" class="provenance-note" style="display: none;">
+  This breakdown covers instance-hours only, matching the sheet's own
+  Architecture pivot -- usage billed in other units (data transfer, storage,
+  requests, etc.) isn't attributable to an architecture and is excluded here,
+  so the bars sum to less than the Runtime total shown in each month's report.
+</p>
+<p class="provenance-note">
+  Months are snapshotted once and then treated as immutable, so this trend
+  is stable across rebuilds. A runner type or instance family not yet in the
+  mapping tables never excludes a month -- its cost, when known, is shown
+  under an explicit "N/A" architecture in that month's detailed report
+  instead of being hidden.
+</p>
+
+<script>
+// Fixed architecture -> color map, so a given architecture keeps the same
+// color across every month's bar rather than render.py's per-month
+// PIE_COLORS assignment (which is by that month's descending value and can
+// reassign colors month to month). Stack ORDER (bottom of the bar first) is
+// derived separately in render() -- see REAL_ARCHES/NEUTRAL_ARCHES and
+// stackOrder below -- from the latest month's data, but is still ONE order
+// applied to every bar in a render rather than each being sorted
+// independently, so a given band lines up across months and the palette
+// below can be validated once against a known-fixed adjacency list rather
+// than every possible pairing.
+//
+// The first 7 entries are the only real architectures ever seen in
+// data/trend_snapshot.json; each gets one of the dataviz skill's 8
+// colorblind-safe categorical hues (7 is also that skill's documented cap on
+// meaning-carrying color classes -- an 8th real architecture should fold
+// into "Other" below rather than taking a generated color). The last 4
+// entries all mean "not attributable to an architecture" (an unmapped
+// runner_type/instance family, or usage billed in non-instance-hour units);
+// they share one neutral gray family distinguished only by lightness, so
+// they read as "not a real category" and never compete visually with a real
+// one. Do not reintroduce hue-cycling for unrecognized keys -- an
+// unrecognized key falls back to "Other"'s gray instead.
+const ARCH_COLORS = {
+  'CUDA': '#008300',
+  'x86_64 (Intel)': '#2a78d6',
+  'x86_64 (AMD)': '#eda100',
+  'ROCM': '#e34948',
+  'ARM64 (AWS Graviton)': '#1baf7a',
+  'Windows': '#e87ba4',
+  'macOS': '#4a3aa7',
+  'x86_64 (Unknown)': '#6b6a66',
+  'ARM64 (Unknown)': '#898781',
+  'Other': '#a8a69f',
+  'N/A': '#c3c2b7',
+};
+
+function colorFor(arch) {
+  return ARCH_COLORS[arch] || ARCH_COLORS['Other'];
+}
+
+// The 7 real architectures vs. the 4 "not attributable" buckets -- split out
+// so the stack order below can rank only the real ones by data and always
+// pin the neutral-gray buckets on top, regardless of their value.
+const REAL_ARCHES = Object.keys(ARCH_COLORS).slice(0, 7);
+const NEUTRAL_ARCHES = Object.keys(ARCH_COLORS).slice(7);
+
+// Legend-only grouping, rendered as its own labeled section per group: CPU
+// architecture, then GPU compute platform, then OS (the OS group holds only
+// the two buckets that are OS *exceptions* -- the runner/instance-family
+// lookup only routes a row to Windows/macOS instead of a CPU architecture
+// when the OS itself is the distinguishing fact; the default OS, Linux,
+// isn't a separate bucket at all), then the buckets not attributable to an
+// architecture at all. Independent of ARCH_COLORS' key order above, which is
+// the bar stacking order, not the legend's -- reordering the legend doesn't
+// reshuffle any bar.
+const LEGEND_GROUPS = [
+  { label: 'CPU', keys: ['x86_64 (Intel)', 'x86_64 (AMD)', 'x86_64 (Unknown)', 'ARM64 (AWS Graviton)', 'ARM64 (Unknown)'] },
+  { label: 'GPU', keys: ['CUDA', 'ROCM'] },
+  { label: 'OS', keys: ['Windows', 'macOS'] },
+  { label: 'Other', keys: ['Other', 'N/A'] },
+];
+
+async function main() {
+  const resp = await fetch('trend_snapshot.json');
+  const snapshot = await resp.json();
+  const allMonths = Object.keys(snapshot).sort();
+
+  let metric = 'financials_total';
+  let windowSize = 12;
+
+  const svg = document.getElementById('chart');
+  const tooltip = document.getElementById('tooltip');
+  const legend = document.getElementById('legend');
+  const btnFin = document.getElementById('btn-financials');
+  const btnRun = document.getElementById('btn-runtime');
+  const btnWindow = document.getElementById('btn-window');
+
+  const ns = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs) {
+    const e = document.createElementNS(ns, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+    return e;
+  }
+
+  function fmtValue(val) {
+    return metric === 'financials_total'
+      ? `$${val.toLocaleString(undefined, {maximumFractionDigits: 2})}`
+      : `${val.toLocaleString(undefined, {maximumFractionDigits: 0})} (mixed units)`;
+  }
+
+  function showTooltip(ev, text) {
+    tooltip.style.display = 'block';
+    tooltip.style.left = (ev.pageX + 10) + 'px';
+    tooltip.style.top = (ev.pageY + 10) + 'px';
+    tooltip.textContent = text;
+  }
+  function hideTooltip() { tooltip.style.display = 'none'; }
+
+  function render() {
+    const months = windowSize ? allMonths.slice(-windowSize) : allMonths;
+    const W = svg.clientWidth || 900;
+    const H = 400;
+    const padL = 70, padR = 20, padT = 20, padB = 70;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = '';
+    legend.innerHTML = '';
+
+    // Band scale, not a point scale: each bar occupies its own slot fully
+    // inside [padL, W - padR] rather than being centered ON the boundary
+    // (which used to plant the first bar directly on top of the Y-axis
+    // labels and overhang the last bar past the right edge).
+    const plotW = W - padL - padR;
+    const slotW = plotW / months.length;
+    const x = i => padL + (i + 0.5) * slotW;
+    const barW = Math.min(60, slotW * 0.6);
+
+    // Both metrics render as stacked bars broken down by architecture
+    // (combined_arch / combined_runtime_arch), matching the per-month
+    // architecture pivot in each month's detailed report. combined_runtime_arch
+    // covers instance-hours only (see #runtime-note below) -- non-instance-hour
+    // usage (GB, requests, etc.) isn't attributable to an architecture, so it's
+    // excluded from this stack rather than dumped into an "Other" bucket that
+    // would otherwise swamp the chart.
+    document.getElementById('runtime-note').style.display =
+      metric === 'financials_total' ? 'none' : 'block';
+    const archKey = metric === 'financials_total' ? 'combined_arch' : 'combined_runtime_arch';
+    const fmtAxis = metric === 'financials_total'
+      ? fmtCompactDollar
+      : val => val.toLocaleString(undefined, {maximumFractionDigits: 0});
+
+    const stackTotals = months.map(m => {
+      const arch = snapshot[m][archKey] || {};
+      return Object.values(arch).reduce((a, b) => a + b, 0);
+    });
+    const rawMax = Math.max(...stackTotals, 1);
+    const step = niceStep(rawMax / 4);
+    const maxV = Math.ceil(rawMax / step) * step;
+    const y = v => padT + (1 - v / maxV) * (H - padT - padB);
+
+    drawGridlines(y, maxV, step, W, H, padL, padR, padT, padB, fmtAxis);
+
+    // One fixed stack order per render, computed from the latest month in
+    // view -- the 7 real architectures ranked by descending value that
+    // month (biggest at the bottom), then the 4 neutral "not attributable"
+    // buckets always on top regardless of their value. Still ONE order
+    // applied to every bar (not a per-bar re-sort), so a given band lines up
+    // across months and the palette above only has to clear a known
+    // adjacency list -- it's just re-derived from data each render instead
+    // of hardcoded, so the bottom of the stack tracks whatever is actually
+    // biggest right now.
+    const latestArch = snapshot[months[months.length - 1]][archKey] || {};
+    const stackOrder = [
+      ...REAL_ARCHES.slice().sort((a, b) => (latestArch[b] || 0) - (latestArch[a] || 0)),
+      ...NEUTRAL_ARCHES,
+    ];
+
+    const archesSeen = new Set();
+    months.forEach((m, i) => {
+      const arch = snapshot[m][archKey] || {};
+      const orderedArches = stackOrder.filter(a => arch[a] > 0);
+      let cum = 0;
+      orderedArches.forEach(a => {
+        const val = arch[a];
+        archesSeen.add(a);
+        const barTop = y(cum + val);
+        const barBottom = y(cum);
+        // A 2px surface gap between segments, so adjacent bands stay visually
+        // separable without a drawn border; segments too thin for a gap to
+        // leave anything visible render solid instead of vanishing.
+        const rawH = Math.max(barBottom - barTop, 0);
+        const h = rawH > 3 ? rawH - 2 : rawH;
+        const bar = el('rect', {
+          class: 'bar',
+          x: x(i) - barW / 2,
+          y: barTop,
+          width: barW,
+          height: h,
+          fill: colorFor(a),
+        });
+        bar.addEventListener('click', () => {
+          window.location.href = `reports/${m}/index.html`;
+        });
+        bar.addEventListener('mousemove', (ev) => {
+          showTooltip(ev, `${m} -- ${a}: ${fmtValue(val)}`);
+        });
+        bar.addEventListener('mouseleave', hideTooltip);
+        svg.appendChild(bar);
+        cum += val;
+      });
+    });
+    renderLegend(archesSeen);
+    renderXLabels(months, x, H, padB);
+  }
+
+  // Rounds a raw quarter-step up to a "nice" 1/2/2.5/5 x 10^n value, so the
+  // Y-axis reads like $0/$1M/$2M rather than arbitrary maxV/4 fractions.
+  function niceStep(raw) {
+    if (raw <= 0) return 1;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+    return nice * mag;
+  }
+
+  function fmtCompactDollar(val) {
+    if (val === 0) return '$0';
+    const abs = Math.abs(val);
+    if (abs >= 1e6) return `$${(val / 1e6).toLocaleString(undefined, {maximumFractionDigits: 1})}M`;
+    if (abs >= 1e3) return `$${(val / 1e3).toLocaleString(undefined, {maximumFractionDigits: 1})}K`;
+    return `$${val.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+  }
+
+  function drawGridlines(y, maxV, step, W, H, padL, padR, padT, padB, fmt) {
+    for (let val = 0; val <= maxV + step / 2; val += step) {
+      const gy = y(val);
+      svg.appendChild(el('line', {
+        x1: padL, y1: gy, x2: W - padR, y2: gy, class: 'gridline'
+      }));
+      const label = el('text', { x: padL - 8, y: gy + 3, class: 'y-axis-label' });
+      label.textContent = fmt(val);
+      svg.appendChild(label);
+    }
+    svg.appendChild(el('line', {
+      x1: padL, y1: padT, x2: padL, y2: H - padB, stroke: '#ccc'
+    }));
+  }
+
+  function renderXLabels(months, x, H, padB) {
+    const labelEvery = Math.ceil(months.length / 15);
+    months.forEach((m, i) => {
+      if (i % labelEvery !== 0 && i !== months.length - 1) return;
+      const tx = x(i), ty = H - padB + 14;
+      const label = el('text', {
+        x: tx, y: ty, class: 'axis-label',
+        transform: `rotate(-55 ${tx} ${ty})`
+      });
+      label.textContent = m;
+      svg.appendChild(label);
+    });
+  }
+
+  function renderLegend(arches) {
+    LEGEND_GROUPS.forEach(group => {
+      const present = group.keys.filter(a => arches.has(a));
+      if (present.length === 0) return;
+      const groupEl = document.createElement('div');
+      groupEl.className = 'legend-group';
+      const label = document.createElement('span');
+      label.className = 'legend-group-label';
+      label.textContent = group.label;
+      groupEl.appendChild(label);
+      present.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.background = colorFor(a);
+        const text = document.createElement('span');
+        text.textContent = a;
+        item.appendChild(swatch);
+        item.appendChild(text);
+        groupEl.appendChild(item);
+      });
+      legend.appendChild(groupEl);
+    });
+  }
+
+  btnFin.addEventListener('click', () => {
+    metric = 'financials_total';
+    btnFin.classList.add('active');
+    btnRun.classList.remove('active');
+    render();
+  });
+  btnRun.addEventListener('click', () => {
+    metric = 'runtime_total';
+    btnRun.classList.add('active');
+    btnFin.classList.remove('active');
+    render();
+  });
+  btnWindow.addEventListener('click', () => {
+    windowSize = windowSize ? null : 12;
+    btnWindow.textContent = windowSize ? 'Show all history' : 'Show last 12 months';
+    render();
+  });
+
+  render();
+  window.addEventListener('resize', render);
+}
+
+main();
+</script>
+</body>
+</html>

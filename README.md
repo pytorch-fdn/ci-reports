@@ -165,10 +165,60 @@ committed):
 - `focus_raw/` — the raw Parquet download (~230MB/month), re-downloadable
   from the bucket at any time.
 
+## Running the full pipeline locally
+
+Three steps, each writing into gitignored `data/<YYYY-MM>/` — nothing under
+`data/` is ever committed. This produces a static `report.html` with no
+Cloudflare/hosting component; hosting is a later, separate effort.
+
+```
+uv sync
+
+# 1. LF (from the AWS FOCUS export)
+FOCUS_BUCKET=$(op read "op://Engineering/ci-reports-config/FOCUS_BUCKET" \
+  --account pytorch.1password.com) \
+  uv run python -m ci_reports.focus_extract "$AWS_PROFILE" 2026-07
+
+# 2. Meta / AMD / Intel-jobs slices (from ClickHouse)
+CH_HOST=$(op read "op://Engineering/ci-reports-config/CH_HOST" \
+  --account pytorch.1password.com) \
+CH_USER=$(op read "op://Engineering/ci-reports-config/CH_USER" \
+  --account pytorch.1password.com) \
+CH_PASS=$(op read "op://Engineering/ci-reports-config/CH_PASS" \
+  --account pytorch.1password.com) \
+  uv run python -m ci_reports.clickhouse_extract 2026-07
+
+# 3. Render the combined static HTML report
+uv run python -m ci_reports.render 2026-07
+```
+
+`CH_HOST`, `CH_USER`, and `CH_PASS` are all required and deliberately not
+committed anywhere in this public repo, same rule as `FOCUS_BUCKET` above.
+Set `EXPORT_TZ` (e.g.
+`America/Toronto`) only when deliberately reproducing a past manual HUD
+export's timezone-dependent date math for comparison — leave it unset for
+normal runs, which use UTC month boundaries.
+
+Step 3 reads the outputs of steps 1 and 2 plus the committed lookup tables in
+`ci_reports/mappings/` (vendor/architecture mapping and AMD GPU-label
+multipliers). A runner type or instance family not covered by those tables
+never blocks the report — its cost, when known, is bucketed under an
+explicit "N/A" architecture row instead of a real one, and the gap is also
+listed under the report's "Coverage gaps" section. Add a row to the
+relevant `ci_reports/mappings/*.json` file and re-run to reclassify it,
+rather than treating the N/A bucket itself as a bug in `render.py`. The one
+case where cost is genuinely unknown, not just unclassified, is an AMD
+runner type missing from the GPU label multiplier table — there's no
+duration x multiplier to compute, so those rows are excluded from the AMD
+total (which the report discloses) rather than counted as $0.
+
+Output lands in `data/<YYYY-MM>/report.html`; open it directly in a browser.
+
 ## Tests
 
 ```
 uv run python tests/test_focus_extract.py  # synthetic duckdb fixture
+uv run python tests/test_amd_cost.py       # synthetic AMD multiplier fixture
 ```
 
 (`pytest` is not currently a dependency; the test file also runs directly.)

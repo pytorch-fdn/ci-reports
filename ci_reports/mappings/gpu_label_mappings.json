@@ -1,0 +1,67 @@
+[
+  {
+    "label": "gfx950",
+    "gpu": "MI350",
+    "multiplier": 2.25
+  },
+  {
+    "label": "gfx1100",
+    "gpu": "Radeon RX 7900 XT",
+    "multiplier": 0.5
+  },
+  {
+    "label": "gfx942",
+    "gpu": "MI325",
+    "multiplier": 1.5
+  },
+  {
+    "label": "gfx90a",
+    "gpu": "MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "linux.rocm.gpu",
+    "gpu": "MI210/MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "linux.rocm.mi210",
+    "gpu": "MI210",
+    "multiplier": 1.0
+  },
+  {
+    "label": "linux.rocm.mi250",
+    "gpu": "MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "rocm-docker",
+    "gpu": "MI210/MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "rocm",
+    "gpu": "MI210/MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "linux-rocm-gpu-1",
+    "gpu": "MI210/MI250",
+    "multiplier": 1.0
+  },
+  {
+    "label": "mi355",
+    "gpu": "MI355",
+    "multiplier": 2.25
+  },
+  {
+    "label": "mi350",
+    "gpu": "MI350",
+    "multiplier": 2.25
+  },
+  {
+    "label": "mi300",
+    "gpu": "MI300",
+    "multiplier": 1.57
+  }
+]

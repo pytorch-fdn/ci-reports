@@ -130,7 +130,15 @@ def main():
     # just lets the CSVs be regenerated locally without re-downloading the
     # raw Parquet if the export bucket's retention ages it out first.
     with open(out_dir / "focus_totals.json", "w") as f:
-        json.dump({"financials": fin_totals, "runtime": run_totals}, f, indent=2)
+        json.dump(
+            {
+                "financials": fin_totals,
+                "runtime": run_totals,
+                "x_Provenance": "focus_export",
+            },
+            f,
+            indent=2,
+        )
 
     fin_total = sum(fin_totals.values())
     run_total = sum(run_totals.values())

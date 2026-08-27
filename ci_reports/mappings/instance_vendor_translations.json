@@ -1,0 +1,1661 @@
+[
+  {
+    "runner": "16-core-ubuntu",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "32-core-ubuntu",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "4-core-ubuntu",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "4-core-ubuntu-arm",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "ARM64 (Unknown)"
+  },
+  {
+    "runner": "4-core-ubuntu-gpu-t4",
+    "instance_family": "N/A",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "8-core-ubuntu",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "B200",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "amd-do-linux.rocm.gpu.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-do-linux.rocm.gpu.gfx950.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-do-linux.rocm.gpu.gfx950.4",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-mi350-runner",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-sandbox-linux.rocm.gpu.gfx942.1",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-sandbox-linux.rocm.gpu.gfx942.2",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-vtr-linux.rocm.gpu.gfx942.1",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-vtr-linux.rocm.gpu.gfx942.2",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "do-linux.rocm.gpu.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "do-linux.rocm.gpu.gfx950.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "do.linux.rocm.gpu.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "do.linux.rocm.gpu.gfx950.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "gcp-h100-runner",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-arm64g2-6-25",
+    "instance_family": "t4g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-arm64g2-6-32",
+    "instance_family": "t4g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-arm64g3-16-62",
+    "instance_family": "m7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-arm64g3-61-463",
+    "instance_family": "r7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-arm64g4-16-62",
+    "instance_family": "m8g",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-barm64g3-62-226",
+    "instance_family": "m7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-barm64g4-62-226",
+    "instance_family": "m8g",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-barm64g4-94-344",
+    "instance_family": "m8g",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-bx86iamx-176-1800-h100-8",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-bx86iamx-92-167",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-bx86iavx512-94-344-t4-8",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx2-189-704-a10g-8",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx2-29-113-a10g",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx2-29-113-l4",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx2-45-167-a10g-4",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx512-125-463",
+    "instance_family": "m6i",
+    "vendor": "Intel",
+    "model": "Intel Ice Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-14-27",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-16-128",
+    "instance_family": "r7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-22-225-b200",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iamx-22-225-h100",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iamx-22-41",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-32-128",
+    "instance_family": "m7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-44-450-b200-2",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iamx-44-450-h100-fab-2",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iamx-46-84",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-8-16",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-8-32",
+    "instance_family": "m7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-8-64",
+    "instance_family": "r7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iamx-88-900-h100-4",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iavx2-40-160",
+    "instance_family": "m7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iavx2-8-32",
+    "instance_family": "m7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "l-x86iavx512-11-125-a100",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iavx512-16-128",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-16-32",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-2-4",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-29-115-t4",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iavx512-32-256",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-37-68",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-45-172-t4-4",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86iavx512-46-85",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-48-384",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-8-16",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-8-64",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-94-192",
+    "instance_family": "c7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-94-768",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "lf-aws-ubuntu-22-amd64-2c-4g",
+    "instance_family": "N/A",
+    "vendor": "Intel",
+    "model": "N/A",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux-rocm-gpu-1",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.10xlarge.avx2",
+    "instance_family": "m4",
+    "vendor": "Intel",
+    "model": "Intel Haswell",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.12xlarge",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.12xlarge.memory",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.12xlarge.memory.ephemeral",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.24_04.4x",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "linux.24xl.gnr",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.24xl.spr-metal",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.24xlarge",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.24xlarge.amd",
+    "instance_family": "m7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "linux.24xlarge.memory",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.2xlarge",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.2xlarge.amx",
+    "instance_family": "m7i-flex",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.2xlarge.avx2",
+    "instance_family": "m4",
+    "vendor": "Intel",
+    "model": "Intel Haswell",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.2xlarge.c7i.test.donotuse",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.2xlarge.memory",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.4xlarge",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.4xlarge.memory",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.4xlarge.nvidia.gpu",
+    "instance_family": "g3",
+    "vendor": "Nvidia",
+    "model": "Nvidia Tesla M60",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.8xlarge.amx",
+    "instance_family": "m7i-flex",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.8xlarge.memory",
+    "instance_family": "r5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.8xlarge.nvidia.gpu",
+    "instance_family": "g3",
+    "vendor": "Nvidia",
+    "model": "Tesla M60",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.9xlarge.ephemeral",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.arm64.2xlarge",
+    "instance_family": "t4g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.2xlarge.ephemeral",
+    "instance_family": "t4g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.m7g.4xlarge",
+    "instance_family": "m7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.m7g.4xlarge.ephemeral",
+    "instance_family": "m7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.m7g.metal",
+    "instance_family": "m7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.m8g.4xlarge",
+    "instance_family": "m8g",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.m8g.metal-24xl",
+    "instance_family": "m8g",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.arm64.r7g.12xlarge.memory",
+    "instance_family": "r7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "linux.aws.a100",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.aws.h100",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.aws.h100.4",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.aws.h100.8",
+    "instance_family": "H100",
+    "vendor": "Nvidia",
+    "model": "Nvidia H100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.c6a.4xlarge",
+    "instance_family": "c6a",
+    "vendor": "AMD",
+    "model": "AMD Milan",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "linux.c7i.12xlarge",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.c7i.2xlarge",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.c7i.4xlarge",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.c7i.8xlarge",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.client.xpu",
+    "instance_family": "XPU",
+    "vendor": "Intel",
+    "model": "Intel XPU",
+    "architecture": "XPU"
+  },
+  {
+    "runner": "linux.dgx.b200",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.dgx.b200.8",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g4dn.12xlarge.nvidia.gpu",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g4dn.4xlarge.nvidia.gpu",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g4dn.metal.nvidia.gpu",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g5.12xlarge.nvidia.gpu",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g5.48xlarge.nvidia.gpu",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g5.4xlarge.nvidia.gpu",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g6.12xlarge.nvidia.gpu",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.g6.4xlarge.experimental.nvidia.gpu",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.google.tpuv6e.1",
+    "instance_family": "N/A",
+    "vendor": "Google",
+    "model": "Google TPU v6e",
+    "architecture": "TPU"
+  },
+  {
+    "runner": "linux.google.tpuv7x.1",
+    "instance_family": "N/A",
+    "vendor": "Google",
+    "model": "Google TPU v7x",
+    "architecture": "TPU"
+  },
+  {
+    "runner": "linux.hpu.gaudi3.8",
+    "instance_family": "N/A",
+    "vendor": "Intel",
+    "model": "Intel Gaudi",
+    "architecture": "XPU"
+  },
+  {
+    "runner": "linux.large",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.m5n.4xlarge",
+    "instance_family": "m5n",
+    "vendor": "Intel",
+    "model": "Intel Cascade Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.p4d.24xlarge",
+    "instance_family": "p4d",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.r7i.2xlarge",
+    "instance_family": "r7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.r7i.4xlarge",
+    "instance_family": "r7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.ril.xpu",
+    "instance_family": "XPU",
+    "vendor": "Intel",
+    "model": "Intel XPU",
+    "architecture": "XPU"
+  },
+  {
+    "runner": "linux.rocm.gfx942.docker-cache",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gfx942.docker-cache",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.sandbox",
+    "instance_family": "N/A",
+    "vendor": "AMD",
+    "model": "N/A",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.torchao",
+    "instance_family": "N/A",
+    "vendor": "AMD",
+    "model": "N/A",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "rocm",
+    "instance_family": "N/A",
+    "vendor": "AMD",
+    "model": "N/A",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "rocm-docker",
+    "instance_family": "N/A",
+    "vendor": "AMD",
+    "model": "N/A",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.2",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.4",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.ecosystem.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.ecosystem.gfx950.1.test",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.ecosystem.gfx950.8",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx1100",
+    "instance_family": "amd-radeon-rx-7900-xt",
+    "vendor": "AMD",
+    "model": "AMD Radeon RX 7900 XT",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx90a.1",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx90a.4",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.2.test",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.a",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.b",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.meta-pytorch",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.stg",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.test",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.test-v",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.1.test.tw",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.2",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.4",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.4.b",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.4.stg",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.4.test",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.4.test.tw",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi325.2",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi325.4",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.8",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx942.8.meta-pytorch",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.1.test",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.1.test-control",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.4",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.4.test",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.meta-pytorch.mi350.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi210",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi210.1",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi210.1.test",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi210.2",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi210.2.test",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi250",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi250.1",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi250.2",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi250.4",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi250.test",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300-test",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.1",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.c1",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.c2",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.test",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.test-2",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.4.test",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.4.test-2",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.dotest",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.2.vultr.test",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.4",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.4.dotest",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.4.vultr.test",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.8",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi300.8",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi350.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi350.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi355.1",
+    "instance_family": "amd-mi355",
+    "vendor": "AMD",
+    "model": "AMD MI355",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi355.2",
+    "instance_family": "amd-mi355",
+    "vendor": "AMD",
+    "model": "AMD MI355",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.mi210.docker-cache",
+    "instance_family": "amd-mi210",
+    "vendor": "AMD",
+    "model": "AMD MI210",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.mi250.docker-cache",
+    "instance_family": "amd-mi250",
+    "vendor": "AMD",
+    "model": "AMD MI250",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.mi350.docker-cache",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.s390x",
+    "instance_family": "ibm-s390x",
+    "vendor": "IBM",
+    "model": "IBM s390x",
+    "architecture": "s390x"
+  },
+  {
+    "runner": "macos-13",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-13-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-14",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-14-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-15",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-15-intel",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-15-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-26",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-26-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-latest",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-latest-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m1-13",
+    "instance_family": "apple-m1",
+    "vendor": "Apple",
+    "model": "Apple M1",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m1-14",
+    "instance_family": "apple-m1",
+    "vendor": "Apple",
+    "model": "Apple M1",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m1-stable",
+    "instance_family": "apple-m1",
+    "vendor": "Apple",
+    "model": "Apple M1",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m2-15",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m2-26",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m2-stable",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "t4-runners",
+    "instance_family": "N/A",
+    "vendor": "N/A",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "ubuntu-22.04",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "ubuntu-24.04",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "ubuntu-24.04-arm",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "ARM64 (Unknown)"
+  },
+  {
+    "runner": "ubuntu-cca-77785908-7ef3-498a-9ae0-bbebb95125d3",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "ubuntu-latest",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "ubuntu-slim",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "v4-runner-set",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "AMD EPYC 7763",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "windows-11-arm64",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows-11-arm64-preview",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows-2019",
+    "instance_family": "N/A",
+    "vendor": "Intel",
+    "model": "x64",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows-2022",
+    "instance_family": "N/A",
+    "vendor": "Intel",
+    "model": "x64",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows-latest",
+    "instance_family": "N/A",
+    "vendor": "Intel",
+    "model": "x64",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.12xlarge",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Cascade Lake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.16xlarge.memory",
+    "instance_family": "r5n",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.4xlarge",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.4xlarge.nonephemeral",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.g4dn.xlarge",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.g5.4xlarge.nvidia.gpu",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "Windows"
+  }
+]
