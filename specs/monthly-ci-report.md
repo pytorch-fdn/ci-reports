@@ -67,7 +67,7 @@ caveat must appear on every page, not just a README/footnote once.
 | LF Financials + LF Runtime | FOCUS Parquet export (S3) via `ci_reports/focus_extract.py` | Exact match to the sheet, verified to the cent for a full month |
 | Meta cost/duration by runner type | ClickHouse `misc.runner_cost`, `owning_account='meta'` | Recomputed, see below — will not byte-match old published sheets |
 | AMD cost/duration by runner type | Same table, `owning_account='amd'`; cost is always 0 upstream, derived from duration × GPU count × a per-model multiplier | Recomputed, methodology-verified, not byte-matched |
-| Intel-jobs breakout (LF / non-LF) | Same table, filtered by job-name regex | Recomputed |
+| Intel-jobs breakout (LF / Meta) | Same table, filtered by job-name regex; scoped to `owning_account` `linux_foundation`/`meta` specifically (not "not LF") so AMD, whose cost is always 0 upstream, can't bleed into either side | Recomputed; carved out of LF's/Meta's own architecture totals into an explicit "XPU" bucket rather than added on top, see `redistribute_intel_jobs_to_xpu()` in `ci_reports/render.py` |
 
 ### Meta/AMD figures are intentionally recomputed, not imported from the sheet
 
@@ -217,6 +217,12 @@ at hand (the Financials-derived GPU multiplier for cost, the Translations
 tab for architecture/vendor display) rather than trying to force the two
 tabs to agree.
 
+`x86_64 (Generic)` is a row in the legacy sheet's own architecture breakdown
+with no corresponding entry in
+`ci_reports/mappings/instance_vendor_translations.json` or anywhere else in
+this codebase. Not reintroduced without input on what it should map to —
+guessing risks silently misclassifying real instance families.
+
 ## Hosting
 
 **Cloudflare Workers + R2** is the working direction, and fits the v1
@@ -348,35 +354,65 @@ sheet) and now also has decided behavior:
   point-scale implementation centered the first bar directly on the Y axis,
   which visually covered the axis's own labels.
 - **Colors are the `dataviz` skill's validated 8-hue categorical palette**,
-  assigned to the 7 real architecture buckets that ever appear in
+  assigned to the 7 real architecture buckets that appear most often in
   `combined_arch`/`combined_runtime_arch` (x86_64 Intel/AMD, ARM64 Graviton,
-  CUDA, ROCM, Windows, macOS); the remaining "not attributable to an
-  architecture" buckets (`x86_64 (Unknown)`, `ARM64 (Unknown)`, `Other`,
-  `N/A`) share one neutral gray family distinguished only by lightness, so
-  they read as "not a real category." An unrecognized architecture key
-  should fold into `Other` rather than get a generated hue — the palette's
-  colorblind-safety validation only holds for this fixed set.
+  CUDA, ROCM, Windows, macOS); TPU, XPU, and s390x are real architectures
+  too but arrived after the 8-hue palette was fixed, so they render in the
+  same neutral gray as the "not attributable to an architecture" buckets
+  (`x86_64 (Unknown)`, `ARM64 (Unknown)`, `Other`, `N/A`) rather than a
+  generated hue — the palette's colorblind-safety validation only holds for
+  the fixed set. `ci_reports/render.py`'s own `ARCH_COLORS`/`color_for()`
+  follow the same rule for the monthly report's pivots and pies.
+- **Every architecture the vendor/architecture mapping table can produce is
+  always shown, even at $0/0 for a given month or window** — both in the
+  monthly report's "Spend by architecture" pivot (`render.py`'s
+  `known_architectures()`, read from
+  `ci_reports/mappings/instance_vendor_translations.json`) and on the trend
+  page's legend and data table (`index.html`'s `KNOWN_ARCHITECTURES`, a
+  by-hand copy of the same set — keep the two in sync). This replaced an
+  earlier implementation where each pivot/legend/table only showed
+  architectures that actually had nonzero data in view, which silently
+  dropped a bucket like TPU or s390x entirely for any month/window where it
+  happened to be zero, rather than showing it at zero like the legacy
+  sheet's fixed row set did. The bars themselves are unaffected — a
+  zero-value segment contributes no visible height either way — only the
+  legend and the row sets (pivot tables, trend data table) changed.
+  `x86_64 (Generic)`, a row in the legacy sheet's own architecture
+  breakdown, has no corresponding entry anywhere in the current mapping
+  table or codebase and is intentionally not reintroduced without further
+  input on what it should represent (see "Mapping coverage checks" above).
 - **The legend is split into labeled sections — CPU, GPU, OS, Other** —
-  independently of the bars' fixed stack order: x86_64/ARM64 buckets (CPU),
-  then CUDA/ROCM (GPU compute platform), then Windows/macOS (the two
-  OS-exception buckets — the default OS, Linux, isn't a separate bucket),
-  then Other/N/A. Each section renders as its own row with a small caps
-  group label and a divider above it, rather than a single flat re-ordered
-  list, so the categories read as visually distinct groups, not just a sort
-  order. A group with no members present in the current view (e.g. no macOS
-  usage that month) is omitted entirely rather than shown empty.
+  independently of the bars' fixed stack order: x86_64/ARM64 buckets plus
+  s390x (CPU), then CUDA/ROCM/TPU/XPU (GPU compute platform), then
+  Windows/macOS (the two OS-exception buckets — the default OS, Linux,
+  isn't a separate bucket), then Other/N/A. Each section renders as its own
+  row with a small caps group label and a divider above it, rather than a
+  single flat re-ordered list, so the categories read as visually distinct
+  groups, not just a sort order. Every group is always shown in full (see
+  above) — a group is omitted only if it would be empty even at $0/0, which
+  cannot currently happen since every group has at least one known
+  architecture.
+- **A data table sits below the chart**, listing the exact per-architecture,
+  per-month figure (plus a bold Total row/column) for whichever metric and
+  window is currently selected — added so a reader can read an exact number
+  without hovering every bar segment, matching the legacy sheet's own
+  table-plus-chart layout. The Runtime view's table carries a caption
+  noting its figures are instance-hours, for the same reason as the
+  Runtime-view caveat note above the chart.
 - **Default view is a 12-month sliding window**, not all-time — supersedes
   an earlier decision to default to all-time, revised after the rendered
   chart got hard to read once enough months accumulated. A "Show all
   history" toggle switches to the full archive; there is no separate
   query-string-driven range picker for screenshots beyond this toggle.
-
-## Open questions
-
-None blocking right now. Everything previously listed here (AMD/Meta FOCUS
-column mapping, Auth0/LFID audience scope and permission model) has been
-resolved above. Revisit this section as implementation surfaces new
-questions.
+- **The trend page carries the same "Data trust"/"Reproduction fidelity"
+  disclaimer banner as each monthly report** (see "Data trust and caveats"
+  above), so a reader landing on the trend page first sees the same
+  estimate/ground-truth caveats before looking at any number. Report-page
+  text (both the trend page and each monthly report) is written to stand on
+  its own for a reader with no prior context on this project's legacy
+  spreadsheet workflow — it should not assume familiarity with "the sheet,"
+  "HUD's dashboard exports," or similar internal-only terms; that context
+  belongs in this spec and in code comments, not in reader-facing copy.
 
 ## Public-repo constraints
 

@@ -22,6 +22,14 @@
   .legend-item { display: flex; align-items: center; gap: 0.4rem; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
   .provenance-note { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+  .banner { background: #fff3cd; border: 1px solid #ffe69c; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+  .data-table-wrap { overflow-x: auto; margin-top: 1.5rem; }
+  table.data-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  table.data-table th, table.data-table td { border: 1px solid #ccc; padding: 0.35rem 0.6rem; text-align: right; white-space: nowrap; }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+  table.data-table tr.total td { font-weight: bold; border-top: 2px solid #333; }
+  table.data-table thead th { background: #f4f4f4; }
+  table.data-table caption { text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; caption-side: top; }
   #tooltip {
     position: absolute; display: none; background: #333; color: white;
     padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.85rem; pointer-events: none;
@@ -33,6 +41,20 @@
 <p>Combined total (all owning accounts: LF, Meta, AMD) per month. Click a
 bar or point to open that month's detailed report.</p>
 
+<div class="banner">
+  <strong>Data trust:</strong> Data from the PyTorch Foundation AWS account
+  (LF) is billing-grade and trusted. Figures from PyTorch HUD (Meta) and
+  AMD-provided pricing are <strong>estimates</strong>, not confirmed real
+  costs -- there is no ground truth for either. This report does not
+  include self-hosted runner costs provided directly by member companies.
+  <br><br>
+  <strong>Reproduction fidelity:</strong> LF is reproduced exactly from the
+  AWS billing export. Meta and AMD are recomputed for the full calendar
+  month using a consistent query methodology, so a previously published
+  figure for the same month may differ slightly from an earlier one-off
+  export. See each month's detailed report for the full explanation.
+</div>
+
 <div class="toggle">
   <button id="btn-financials" class="active">Financials</button>
   <button id="btn-runtime">Runtime</button>
@@ -43,10 +65,10 @@ bar or point to open that month's detailed report.</p>
 <div id="legend" class="legend"></div>
 <div id="tooltip"></div>
 <p id="runtime-note" class="provenance-note" style="display: none;">
-  This breakdown covers instance-hours only, matching the sheet's own
-  Architecture pivot -- usage billed in other units (data transfer, storage,
-  requests, etc.) isn't attributable to an architecture and is excluded here,
-  so the bars sum to less than the Runtime total shown in each month's report.
+  This breakdown covers instance-hours only -- usage billed in other units
+  (data transfer, storage, requests, etc.) isn't attributable to an
+  architecture and is excluded here, so the bars sum to less than that
+  month's total usage across every charge type.
 </p>
 <p class="provenance-note">
   Months are snapshotted once and then treated as immutable, so this trend
@@ -55,6 +77,10 @@ bar or point to open that month's detailed report.</p>
   under an explicit "N/A" architecture in that month's detailed report
   instead of being hidden.
 </p>
+
+<div class="data-table-wrap">
+  <table class="data-table" id="data-table"></table>
+</div>
 
 <script>
 // Fixed architecture -> color map, so a given architecture keeps the same
@@ -103,6 +129,22 @@ function colorFor(arch) {
 const REAL_ARCHES = Object.keys(ARCH_COLORS).slice(0, 7);
 const NEUTRAL_ARCHES = Object.keys(ARCH_COLORS).slice(7);
 
+// TPU, XPU, and s390x are real architectures the vendor/architecture
+// mapping table can emit (see ci_reports/mappings/instance_vendor_translations.json)
+// but arrived after the palette above was fixed at its validated 8-hue cap,
+// so they render in Other's gray via colorFor()'s fallback rather than a
+// generated hue -- see the dataviz skill. Keep this list in sync with
+// render.py's known_architectures() by hand.
+const MAPPED_GRAY_ARCHES = ['s390x', 'TPU', 'XPU'];
+
+// Every architecture the mapping table knows about, real or gray-fallback,
+// plus the "not attributable" buckets -- shown in the legend and the data
+// table even for a month with $0/0 in that bucket, matching render.py's
+// Architecture pivot (see known_architectures() there) and the legacy
+// sheet's fixed row set, rather than only whatever a vendor happened to
+// bill for.
+const KNOWN_ARCHITECTURES = [...REAL_ARCHES, ...MAPPED_GRAY_ARCHES, ...NEUTRAL_ARCHES];
+
 // Legend-only grouping, rendered as its own labeled section per group: CPU
 // architecture, then GPU compute platform, then OS (the OS group holds only
 // the two buckets that are OS *exceptions* -- the runner/instance-family
@@ -113,11 +155,28 @@ const NEUTRAL_ARCHES = Object.keys(ARCH_COLORS).slice(7);
 // the bar stacking order, not the legend's -- reordering the legend doesn't
 // reshuffle any bar.
 const LEGEND_GROUPS = [
-  { label: 'CPU', keys: ['x86_64 (Intel)', 'x86_64 (AMD)', 'x86_64 (Unknown)', 'ARM64 (AWS Graviton)', 'ARM64 (Unknown)'] },
-  { label: 'GPU', keys: ['CUDA', 'ROCM'] },
+  { label: 'CPU', keys: ['x86_64 (Intel)', 'x86_64 (AMD)', 'x86_64 (Unknown)', 'ARM64 (AWS Graviton)', 'ARM64 (Unknown)', 's390x'] },
+  { label: 'GPU', keys: ['CUDA', 'ROCM', 'TPU', 'XPU'] },
   { label: 'OS', keys: ['Windows', 'macOS'] },
   { label: 'Other', keys: ['Other', 'N/A'] },
 ];
+
+// Any key a month's data carries that isn't in KNOWN_ARCHITECTURES at all --
+// i.e. not even one of the mapping table's own architectures. Without this,
+// stackOrder below would silently drop such a bucket's bar segment entirely
+// rather than showing it in Other's gray. Recomputed from the whole
+// snapshot, not just the current window, so a bucket that only appears
+// outside the current window is still known if the window is later widened.
+function collectExtraArchKeys(snapshot, archKey) {
+  const known = new Set(KNOWN_ARCHITECTURES);
+  const extra = new Set();
+  for (const month of Object.keys(snapshot)) {
+    for (const key of Object.keys(snapshot[month][archKey] || {})) {
+      if (!known.has(key)) extra.add(key);
+    }
+  }
+  return [...extra].sort();
+}
 
 async function main() {
   const resp = await fetch('trend_snapshot.json');
@@ -208,9 +267,12 @@ async function main() {
     // of hardcoded, so the bottom of the stack tracks whatever is actually
     // biggest right now.
     const latestArch = snapshot[months[months.length - 1]][archKey] || {};
+    const extraArches = collectExtraArchKeys(snapshot, archKey);
     const stackOrder = [
       ...REAL_ARCHES.slice().sort((a, b) => (latestArch[b] || 0) - (latestArch[a] || 0)),
+      ...MAPPED_GRAY_ARCHES,
       ...NEUTRAL_ARCHES,
+      ...extraArches,
     ];
 
     const archesSeen = new Set();
@@ -237,7 +299,8 @@ async function main() {
           fill: colorFor(a),
         });
         bar.addEventListener('click', () => {
-          window.location.href = `reports/${m}/index.html`;
+          const view = metric === 'financials_total' ? '' : '?view=runtime';
+          window.location.href = `reports/${m}/index.html${view}`;
         });
         bar.addEventListener('mousemove', (ev) => {
           showTooltip(ev, `${m} -- ${a}: ${fmtValue(val)}`);
@@ -249,6 +312,7 @@ async function main() {
     });
     renderLegend(archesSeen);
     renderXLabels(months, x, H, padB);
+    renderTable(months, archKey, stackOrder);
   }
 
   // Rounds a raw quarter-step up to a "nice" 1/2/2.5/5 x 10^n value, so the
@@ -299,8 +363,20 @@ async function main() {
   }
 
   function renderLegend(arches) {
+    // Every group's keys are shown regardless of whether this window's data
+    // has anything in them -- KNOWN_ARCHITECTURES is the mapping table's
+    // fixed, known set (see its own comment), so e.g. TPU/s390x still get a
+    // legend row at $0/0, matching the legacy sheet's fixed row set. A key
+    // present in the data but not named in any group above (truly unknown --
+    // not even in the mapping table) still gets a row too -- appended to
+    // "Other" rather than silently missing one, matching the fallback
+    // swatch colorFor() already gives it.
+    const grouped = new Set(LEGEND_GROUPS.flatMap(g => g.keys));
+    const ungrouped = [...arches].filter(a => !grouped.has(a)).sort();
+
     LEGEND_GROUPS.forEach(group => {
-      const present = group.keys.filter(a => arches.has(a));
+      let present = group.keys.slice();
+      if (group.label === 'Other') present = [...present, ...ungrouped];
       if (present.length === 0) return;
       const groupEl = document.createElement('div');
       groupEl.className = 'legend-group';
@@ -322,6 +398,67 @@ async function main() {
       });
       legend.appendChild(groupEl);
     });
+  }
+
+  function textEl(tag, text) {
+    const e = document.createElement(tag);
+    e.textContent = text;
+    return e;
+  }
+
+  function fmtCell(val) {
+    return metric === 'financials_total'
+      ? `$${val.toLocaleString(undefined, {maximumFractionDigits: 2, minimumFractionDigits: 2})}`
+      : val.toLocaleString(undefined, {maximumFractionDigits: 0});
+  }
+
+  // The exact numbers behind the chart above, in the same architecture
+  // order as the stacked bars -- so a reader who wants the precise figure
+  // for one architecture/month doesn't have to hover every segment. Every
+  // row in stackOrder is shown, not just archesSeen (the bar chart's
+  // nonzero segments) -- stackOrder already covers every known
+  // architecture plus any truly-unknown one actually present in the
+  // snapshot, so e.g. TPU/s390x still get a $0/0 row for a window where
+  // they had none, matching the legacy sheet's fixed row set.
+  function renderTable(months, archKey, stackOrder) {
+    const table = document.getElementById('data-table');
+    table.innerHTML = '';
+    const rows = stackOrder;
+
+    if (archKey !== 'combined_arch') {
+      table.appendChild(textEl('caption', 'Figures below are instance-hours.'));
+    }
+
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    headRow.appendChild(textEl('th', 'Architecture'));
+    months.forEach(m => headRow.appendChild(textEl('th', m)));
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(a => {
+      const tr = document.createElement('tr');
+      tr.appendChild(textEl('td', a));
+      months.forEach(m => {
+        const val = (snapshot[m][archKey] || {})[a] || 0;
+        tr.appendChild(textEl('td', fmtCell(val)));
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const tfoot = document.createElement('tfoot');
+    const totalRow = document.createElement('tr');
+    totalRow.className = 'total';
+    totalRow.appendChild(textEl('td', 'Total'));
+    months.forEach(m => {
+      const arch = snapshot[m][archKey] || {};
+      const total = Object.values(arch).reduce((a, b) => a + b, 0);
+      totalRow.appendChild(textEl('td', fmtCell(total)));
+    });
+    tfoot.appendChild(totalRow);
+    table.appendChild(tfoot);
   }
 
   btnFin.addEventListener('click', () => {

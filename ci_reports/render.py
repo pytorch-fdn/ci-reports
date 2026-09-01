@@ -83,6 +83,18 @@ def color_for(label):
     return ARCH_COLORS.get(label, ARCH_COLORS["Other"])
 
 
+def known_architectures():
+    """Every architecture label the vendor/architecture lookup table can
+    produce, read straight from its 'architecture' column. Used so the
+    Architecture pivot always lists every architecture the mapping table
+    knows about -- even one with $0 this month -- rather than only whatever
+    happens to be in per_vendor_totals' union (which drops a bucket entirely
+    the moment no vendor billed anything for it that month)."""
+    with open(MAPPINGS_ROOT / "instance_vendor_translations.json") as f:
+        translations = json.load(f)
+    return {row["architecture"] for row in translations}
+
+
 def load_lookup_tables():
     lookup_dir = MAPPINGS_ROOT
     with open(lookup_dir / "instance_vendor_translations.json") as f:
@@ -204,6 +216,33 @@ def bucket_runtime_by_arch(rows, runner_to_arch):
     return arch_totals
 
 
+def bucket_lf_runtime_by_os(runtime):
+    """Sums LF's FOCUS runtime map by OS, the OS-side counterpart to
+    bucket_lf_runtime_by_arch() -- same "Instance Hour" charge lines only,
+    dropping every other charge type for the same reason (GB/requests/etc.
+    aren't comparable to instance-hours)."""
+    os_totals = {}
+    for description, quantity in runtime.items():
+        match = INSTANCE_HOUR_RE.search(description)
+        if not match:
+            continue
+        os_name, _instance_type = match.groups()
+        os_totals[os_name] = os_totals.get(os_name, 0.0) + quantity
+    return os_totals
+
+
+def bucket_runtime_by_os(rows):
+    """Sums a ClickHouse vendor's raw `duration` column by the `os` column
+    -- the OS-side counterpart to bucket_runtime_by_arch(). Used for both
+    Meta and AMD rows."""
+    os_totals = {}
+    for row in rows:
+        duration = float(row["duration"])
+        os_name = normalize_os_name(row["os"])
+        os_totals[os_name] = os_totals.get(os_name, 0.0) + duration
+    return os_totals
+
+
 def normalize_os_name(raw_os):
     """ClickHouse's `os` column is lowercase ("linux", "windows", "macos").
     str.capitalize() alone would turn "macos" into "Macos" -- wrong spelling
@@ -299,6 +338,35 @@ def bucket_lf_runtime_by_arch(runtime, family_to_arch):
     return arch_totals
 
 
+def redistribute_intel_jobs_to_xpu(arch_totals, runtime_arch_totals, intel_rows, runner_to_arch):
+    """Carves Intel's job-name-regex-matched cost/duration (see
+    clickhouse_extract.INTEL_JOB_REGEX) out of whichever architecture bucket
+    each row's runner_type would otherwise resolve to, and into an explicit
+    "XPU" bucket -- rather than adding it on top of that bucket, which would
+    double-count it. These rows are generic CPU/Windows runners (already
+    counted under e.g. "x86_64 (Intel)"/"Windows") that happen to also run
+    Intel XPU software tests; the job-name regex is the only way to find
+    that slice, since the runner_type itself doesn't say so.
+
+    A row whose runner_type already resolves to XPU on its own (e.g.
+    linux.client.xpu) is skipped -- it's already in the XPU bucket via the
+    vendor/architecture lookup, so redistributing it again would double-add
+    it instead of double-counting it.
+
+    Mutates and returns both dicts."""
+    for row in intel_rows:
+        arch = resolve_arch(row["runner_type"], runner_to_arch) or UNMAPPED_ARCH_LABEL
+        if arch == "XPU":
+            continue
+        cost = float(row["cost"])
+        duration = float(row["duration"])
+        arch_totals[arch] = arch_totals.get(arch, 0.0) - cost
+        arch_totals["XPU"] = arch_totals.get("XPU", 0.0) + cost
+        runtime_arch_totals[arch] = runtime_arch_totals.get(arch, 0.0) - duration
+        runtime_arch_totals["XPU"] = runtime_arch_totals.get("XPU", 0.0) + duration
+    return arch_totals, runtime_arch_totals
+
+
 def combine_totals(*totals_dicts):
     combined = {}
     for totals in totals_dicts:
@@ -359,51 +427,73 @@ def render_pie_svg(title, totals, size=200):
     """
 
 
-def render_pivot_table(title, column_label, totals, grand_total, row_keys):
+def render_pivot_table(
+    title, column_label, totals, grand_total, row_keys, value_label="Cost", format_value=None
+):
     """row_keys is the common set of keys shown across every vendor's table
     in a section, so a key absent from this vendor's totals still gets a
-    row, at $0.00, rather than being omitted. Display order is this table's
+    row, at zero, rather than being omitted. Display order is this table's
     own spend, descending -- the shared row *set* keeps the tables
-    comparable without forcing them all into one table's order."""
+    comparable without forcing them all into one table's order.
+
+    `value_label`/`format_value` let a caller reuse this for a non-cost
+    metric (e.g. the Runtime section's instance-hours) without every cost
+    table having to know about that -- defaults reproduce the original
+    dollar formatting exactly."""
+    if format_value is None:
+        format_value = lambda v: f"${v:,.2f}"
     ordered_keys = sorted(row_keys, key=lambda k: -totals.get(k, 0.0))
     rows_html = "\n".join(
-        f"<tr><td>{html.escape(key)}</td><td>${totals.get(key, 0.0):,.2f}</td></tr>"
+        f"<tr><td>{html.escape(key)}</td><td>{format_value(totals.get(key, 0.0))}</td></tr>"
         for key in ordered_keys
     )
     return f"""
     <h4>{html.escape(title)}</h4>
     <table>
-      <thead><tr><th>{html.escape(column_label)}</th><th>Cost</th></tr></thead>
+      <thead><tr><th>{html.escape(column_label)}</th><th>{html.escape(value_label)}</th></tr></thead>
       <tbody>
         {rows_html}
-        <tr class="total"><td>Total</td><td>${grand_total:,.2f}</td></tr>
+        <tr class="total"><td>Total</td><td>{format_value(grand_total)}</td></tr>
       </tbody>
     </table>
     """
 
 
-def render_pivot_section(section_title, column_label, per_vendor_totals, note=None):
-    """Renders one Architecture- or OS-style section: a row of Vendor->Total
-    tables (LF/Meta/AMD/Combined) followed by a row of matching pie charts,
-    reproducing the sheet's own table+pie-per-vendor layout. An optional
+def render_pivot_section(
+    section_title,
+    column_label,
+    per_vendor_totals,
+    note=None,
+    known_keys=None,
+    value_label="Cost",
+    format_value=None,
+):
+    """Renders one Architecture- or OS-style section: a row of Vendor pie
+    charts (LF/Meta/AMD/Combined) followed by a row of matching Vendor->Total
+    tables, graphs-above-tables like the Trend page. An optional
     `note` renders as a caption under the section heading (used by the OS
     section to call out that Linux is the default OS).
 
     Every vendor's table lists the same rows -- the union of keys across all
-    vendors, so a key one vendor has $0 of (e.g. AMD has no Windows spend)
-    still shows a $0.00 row there for comparison against the other tables,
-    instead of just not appearing. A key none of the vendors have at all
-    (never billed this month) is never in that union, so it's never shown --
-    "hidden" falls out of the union rather than needing a separate check.
-    Each table's own row *order* is its own spend, descending (see
-    render_pivot_table) -- only the row set is shared, not the order, so
-    e.g. AMD's table still reads biggest-to-smallest for AMD even though
-    that differs from LF's or Combined's ordering.
+    vendors (plus `known_keys`, when given), so a key one vendor has $0 of
+    (e.g. AMD has no Windows spend) still shows a $0.00 row there for
+    comparison against the other tables, instead of just not appearing.
+    Without `known_keys`, a key none of the vendors have at all this month
+    is never in that union, so it's never shown -- pass `known_keys` (the
+    Architecture section does, with known_architectures()) when the row set
+    should always include architectures the mapping table knows about even
+    when every vendor billed $0 for them this month. Each table's own row
+    *order* is its own spend, descending (see render_pivot_table) -- only
+    the row set is shared, not the order, so e.g. AMD's table still reads
+    biggest-to-smallest for AMD even though that differs from LF's or
+    Combined's ordering.
     """
     row_keys = {key for totals in per_vendor_totals.values() for key in totals}
+    if known_keys:
+        row_keys |= set(known_keys)
 
     tables = "\n".join(
-        f'<div class="pivot-cell">{render_pivot_table(vendor, column_label, totals, sum(totals.values()), row_keys)}</div>'
+        f'<div class="pivot-cell">{render_pivot_table(vendor, column_label, totals, sum(totals.values()), row_keys, value_label, format_value)}</div>'
         for vendor, totals in per_vendor_totals.items()
     )
     pies = "\n".join(
@@ -414,8 +504,8 @@ def render_pivot_section(section_title, column_label, per_vendor_totals, note=No
     return f"""
     <h3>{html.escape(section_title)}</h3>
     {note_html}
-    <div class="pivot-row">{tables}</div>
     <div class="pivot-row">{pies}</div>
+    <div class="pivot-row">{tables}</div>
     """
 
 
@@ -460,6 +550,10 @@ def compute_month_totals(year_month):
         meta_rows = json.load(f)
     with open(ch_dir / "amd_by_runner_type.json") as f:
         amd_rows = json.load(f)
+    with open(ch_dir / "intel_jobs_lf.json") as f:
+        intel_jobs_lf = json.load(f)
+    with open(ch_dir / "intel_jobs_excluding_lf.json") as f:
+        intel_jobs_meta = json.load(f)
 
     runner_to_arch, family_to_arch, gpu_mappings = load_lookup_tables()
 
@@ -487,6 +581,26 @@ def compute_month_totals(year_month):
     lf_runtime_arch = bucket_lf_runtime_by_arch(focus["runtime"], family_to_arch)
     meta_runtime_arch = bucket_runtime_by_arch(meta_rows, runner_to_arch)
     amd_runtime_arch = bucket_runtime_by_arch(amd_rows, runner_to_arch)
+
+    # OS is independent of the XPU carve-out below (that only reallocates
+    # between architecture buckets), so these don't need the same
+    # redistribution pass lf_runtime_arch/meta_runtime_arch get.
+    lf_runtime_os = bucket_lf_runtime_by_os(focus["runtime"])
+    meta_runtime_os = bucket_runtime_by_os(meta_rows)
+    amd_runtime_os = bucket_runtime_by_os(amd_rows)
+    combined_runtime_os = combine_totals(lf_runtime_os, meta_runtime_os, amd_runtime_os)
+
+    # Carve XPU out of whichever bucket the Intel-jobs regex rows would
+    # otherwise land in -- a reallocation within each vendor's own total, not
+    # new money, so lf_total/meta_total/combined_total are unaffected by
+    # construction. See redistribute_intel_jobs_to_xpu().
+    lf_arch, lf_runtime_arch = redistribute_intel_jobs_to_xpu(
+        lf_arch, lf_runtime_arch, intel_jobs_lf, runner_to_arch
+    )
+    meta_arch, meta_runtime_arch = redistribute_intel_jobs_to_xpu(
+        meta_arch, meta_runtime_arch, intel_jobs_meta, runner_to_arch
+    )
+
     combined_runtime_arch = combine_totals(lf_runtime_arch, meta_runtime_arch, amd_runtime_arch)
 
     combined_arch = combine_totals(lf_arch, meta_arch, amd_arch)
@@ -511,6 +625,13 @@ def compute_month_totals(year_month):
         "amd_runtime_total": amd_runtime_total,
         "combined_runtime_total": combined_runtime_total,
         "combined_runtime_arch": combined_runtime_arch,
+        "lf_runtime_arch": lf_runtime_arch,
+        "meta_runtime_arch": meta_runtime_arch,
+        "amd_runtime_arch": amd_runtime_arch,
+        "combined_runtime_os": combined_runtime_os,
+        "lf_runtime_os": lf_runtime_os,
+        "meta_runtime_os": meta_runtime_os,
+        "amd_runtime_os": amd_runtime_os,
         "lf_arch": lf_arch,
         "meta_arch": meta_arch,
         "amd_arch": amd_arch,
@@ -550,6 +671,39 @@ def render_report(year_month):
             "AMD": totals["amd_arch"],
             "Combined": totals["combined_arch"],
         },
+        known_keys=known_architectures(),
+    )
+    runtime_arch_section = render_pivot_section(
+        "Runtime by architecture",
+        "Architecture",
+        {
+            "LF": totals["lf_runtime_arch"],
+            "Meta": totals["meta_runtime_arch"],
+            "AMD": totals["amd_runtime_arch"],
+            "Combined": totals["combined_runtime_arch"],
+        },
+        known_keys=known_architectures(),
+        note="Figures are instance-hours. LF's slice only counts Instance "
+        "Hour charge lines -- usage billed in other units (data transfer, "
+        "storage, requests, etc.) isn't attributable to an architecture "
+        "and is excluded here.",
+        value_label="Hours",
+        format_value=lambda v: f"{v:,.1f}",
+    )
+    runtime_os_section = render_pivot_section(
+        "Runtime by OS",
+        "OS",
+        {
+            "LF": totals["lf_runtime_os"],
+            "Meta": totals["meta_runtime_os"],
+            "AMD": totals["amd_runtime_os"],
+            "Combined": totals["combined_runtime_os"],
+        },
+        note="Linux is the default OS -- the other rows are OS exceptions. "
+        "Figures are instance-hours; LF's slice only counts Instance Hour "
+        "charge lines, same as Runtime by architecture above.",
+        value_label="Hours",
+        format_value=lambda v: f"{v:,.1f}",
     )
     os_section = render_pivot_section(
         "Spend by OS",
@@ -582,6 +736,11 @@ def render_report(year_month):
   .legend li {{ display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.2rem; }}
   .swatch {{ display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; flex-shrink: 0; }}
   .section-note {{ font-size: 0.85rem; color: #666; margin-top: -0.25rem; }}
+  .toggle {{ margin: 1rem 0; }}
+  .toggle button {{ padding: 0.4rem 1rem; border: 1px solid #999; background: #f4f4f4; cursor: pointer; font-size: 0.95rem; }}
+  .toggle button:first-child {{ border-radius: 4px 0 0 4px; }}
+  .toggle button:last-child {{ border-radius: 0 4px 4px 0; border-left: none; }}
+  .toggle button.active {{ background: #2a78d6; color: #fff; border-color: #2a78d6; }}
 </style>
 </head>
 <body>
@@ -596,15 +755,10 @@ def render_report(year_month):
   companies.
   <br><br>
   <strong>Reproduction fidelity:</strong> LF is reproduced exactly from the
-  AWS FOCUS export. Meta and AMD are recomputed live from ClickHouse using
-  the same query methodology as HUD's own dashboard, for the full calendar
-  month. A previously published month's figures may differ slightly because
-  HUD's own dashboard can silently drop the first day of a manually-run
-  export depending on the browser timezone of whoever generated it, and
-  because published exports were sometimes taken before that month's data
-  had fully landed -- this report does not reproduce either artifact. See
-  the project spec's "Meta/AMD figures are intentionally recomputed"
-  section for how this was verified.
+  AWS billing export. Meta and AMD are recomputed for the full calendar
+  month using a consistent query methodology, so a previously published
+  figure for the same month may differ slightly from an earlier one-off
+  export.
 </div>
 
 <p class="grand-total">Combined total (list-price-equivalent): ${combined_total:,.2f}</p>
@@ -619,11 +773,52 @@ def render_report(year_month):
 <p>Estimated total: ${amd_total:,.2f}</p>
 {amd_cost_note}
 
+<div class="toggle">
+  <button id="btn-financials" class="active">Financials</button>
+  <button id="btn-runtime">Runtime</button>
+</div>
+
+<div id="financials-view">
 {arch_section}
 
 {os_section}
+</div>
+
+<div id="runtime-view" style="display:none">
+{runtime_arch_section}
+
+{runtime_os_section}
+</div>
 
 {render_coverage_gaps(gaps)}
+
+<script>
+  const btnFin = document.getElementById('btn-financials');
+  const btnRun = document.getElementById('btn-runtime');
+  const finView = document.getElementById('financials-view');
+  const runView = document.getElementById('runtime-view');
+
+  function showFinancials() {{
+    btnFin.classList.add('active');
+    btnRun.classList.remove('active');
+    finView.style.display = '';
+    runView.style.display = 'none';
+  }}
+
+  function showRuntime() {{
+    btnRun.classList.add('active');
+    btnFin.classList.remove('active');
+    runView.style.display = '';
+    finView.style.display = 'none';
+  }}
+
+  btnFin.addEventListener('click', showFinancials);
+  btnRun.addEventListener('click', showRuntime);
+
+  if (new URLSearchParams(window.location.search).get('view') === 'runtime') {{
+    showRuntime();
+  }}
+</script>
 
 </body>
 </html>
