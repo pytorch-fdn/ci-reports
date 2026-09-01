@@ -41,12 +41,23 @@ construction bit-for-bit. This is a verification aid, not the intended
 long-term default -- it reproduces a timezone-dependent artifact in HUD's
 own frontend, not a property of the underlying data.
 
-`fetch_by_runner_type()` and `fetch_intel_jobs()` filter to `cost > 0` for
-real-cost slices (meta, linux_foundation) to match HUD's own
-cost_job_per_runner_type query, which excludes zero-cost and negative-cost
-(e.g. skipped-run) rows -- confirmed against the sheet's raw runner-type
-export this filter reproduces the exact same set of runner_types, not just
-a similar total.
+`fetch_by_runner_type()` filters real-cost slices (meta, linux_foundation) to
+`cost >= 0`, excluding only negative-cost (e.g. skipped-run) rows -- unlike
+HUD's own cost_job_per_runner_type query, which also excludes zero-cost rows.
+Some runner_types (e.g. s390x, some TPU generations) are self-hosted by
+other member companies -- they have a real cost, but not one this table
+sees, so ClickHouse carries `cost = 0` for them even though they still run
+real jobs. HUD's `cost > 0` filter drops their `duration` along with that
+(not-actually-zero, just-unseen) cost -- since this table sums both columns
+together per runner_type/os, there's no way to keep one and drop the other.
+Excluding negative-cost rows only, instead of dropping the filter entirely,
+keeps this reproducing the same real-cost total HUD's query does for every
+runner_type whose cost this table does see.
+
+`fetch_intel_jobs()` keeps its own `cost > 0` filter -- the job-name-regex
+rows it selects are ordinary CPU/generic runners with cost visible to this
+table (see render.py's XPU carve-out), not the member-self-hosted case
+above, so there's no zero-cost duration at risk of being dropped here.
 """
 
 import base64
@@ -116,12 +127,14 @@ def fetch_by_runner_type(host, user, password, year_month, owning_account, expor
     """The ClickHouse equivalent of "HUD Monthly Cost/Duration Per Runner
     Type", scoped to one owning_account (meta / amd / linux_foundation).
 
-    Matches HUD's own query (torchci/clickhouse_queries/cost_job_per_runner_type)
-    by adding `cost > 0`, which excludes both zero-cost rows and the small
-    number of negative-cost rows (e.g. skipped runs) HUD's dashboard also
-    excludes. Skipped for AMD: `cost` is always 0 for AMD-owned rows (its
-    real cost is derived from `duration` in amd_cost.py), so this filter
-    would incorrectly drop every AMD row rather than a genuine subset.
+    Excludes negative-cost rows (e.g. skipped runs), like HUD's own query
+    (torchci/clickhouse_queries/cost_job_per_runner_type) does -- but, unlike
+    HUD's query, keeps zero-cost rows rather than dropping them too, so
+    member-self-hosted runner_types (real cost, but not one this table sees,
+    hence `cost = 0` here) keep their `duration`. Skipped for AMD: `cost` is
+    always 0 for AMD-owned rows (its real cost is derived from `duration` in
+    amd_cost.py), so any cost filter would incorrectly drop every AMD row
+    rather than a genuine subset.
 
     `export_tz`: see date_range_clause().
 
@@ -130,7 +143,7 @@ def fetch_by_runner_type(host, user, password, year_month, owning_account, expor
     extract -- a runner_type is expected to carry one os value in practice,
     so this doesn't change per-architecture totals, only adds a column."""
     date_clause = date_range_clause("rc.date", year_month, export_tz)
-    cost_filter = "AND rc.cost > 0" if owning_account != "amd" else ""
+    cost_filter = "AND rc.cost >= 0" if owning_account != "amd" else ""
     sql = f"""
         SELECT runner_type, os, sum(rc.cost) AS cost, sum(rc.duration) AS duration, count() AS rows
         FROM misc.runner_cost AS rc FINAL
@@ -144,22 +157,32 @@ def fetch_by_runner_type(host, user, password, year_month, owning_account, expor
 
 def fetch_intel_jobs(host, user, password, year_month, exclude_lf, export_tz=None):
     """The ClickHouse equivalent of "HUD Monthly Cost Per Job Name -- Intel
-    Jobs Only", either excluding or restricted to Owner LF.
+    Jobs Only", restricted to Owner LF or to Meta (not "not LF" -- AMD is
+    excluded from both sides on purpose, since render.py's XPU carve-out
+    only reallocates within the LF and Meta totals the user actually asked
+    about, and AMD's cost is always 0 in this table anyway).
+
+    Includes `runner_type` per job_name/row (grouped alongside it, since a
+    job can run on more than one runner_type across a month) so
+    render.py can resolve each matched row's own architecture bucket and
+    subtract this same amount from it before adding it to XPU -- otherwise
+    XPU's carve-out would double-count spend already counted under e.g.
+    "x86_64 (Intel)"/"Windows" for the generic CPU runners these jobs
+    actually ran on.
 
     `export_tz`: see date_range_clause()."""
     date_clause = date_range_clause("rc.date", year_month, export_tz)
     account_filter = (
-        "owning_account != 'linux_foundation'"
-        if exclude_lf
-        else "owning_account = 'linux_foundation'"
+        "owning_account = 'meta'" if exclude_lf else "owning_account = 'linux_foundation'"
     )
     sql = f"""
-        SELECT job_name, sum(rc.cost) AS cost, sum(rc.duration) AS duration, count() AS rows
+        SELECT job_name, runner_type, sum(rc.cost) AS cost,
+               sum(rc.duration) AS duration, count() AS rows
         FROM misc.runner_cost AS rc FINAL
         WHERE {date_clause} AND rc.{account_filter}
           AND rc.cost > 0
           AND match(job_name, '{INTEL_JOB_REGEX}')
-        GROUP BY job_name
+        GROUP BY job_name, runner_type
         ORDER BY job_name
     """
     return ch_query(host, user, password, sql)
