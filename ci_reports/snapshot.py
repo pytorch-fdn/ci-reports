@@ -36,7 +36,7 @@ import json
 import sys
 from pathlib import Path
 
-from ci_reports.render import compute_month_totals
+from ci_reports.render import compute_month_totals, discover_months
 
 DATA_ROOT = Path(__file__).resolve().parent.parent / "data"
 SNAPSHOT_PATH = DATA_ROOT / "trend_snapshot.json"
@@ -47,14 +47,6 @@ def load_snapshot():
         with open(SNAPSHOT_PATH) as f:
             return json.load(f)
     return {}
-
-
-def discover_months():
-    return sorted(
-        p.name
-        for p in DATA_ROOT.iterdir()
-        if p.is_dir() and (p / "focus_totals.json").exists()
-    )
 
 
 def build_snapshot(force=False):

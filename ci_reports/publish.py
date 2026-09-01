@@ -57,6 +57,13 @@ def publish():
 
     print(f"Published {copied} month report(s) to {SITE_BUILD}")
 
+    from ci_reports.render import render_mappings_page
+
+    mappings_dir = SITE_BUILD / "mappings"
+    mappings_dir.mkdir()
+    (mappings_dir / "index.html").write_text(render_mappings_page())
+    print(f"Published mappings page to {mappings_dir}")
+
 
 if __name__ == "__main__":
     publish()

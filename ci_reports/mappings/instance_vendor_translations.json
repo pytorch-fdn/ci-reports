@@ -1657,5 +1657,327 @@
     "vendor": "Nvidia",
     "model": "Nvidia A10G",
     "architecture": "Windows"
+  },
+  {
+    "runner": "l-arm64g3-44-340",
+    "instance_family": "r7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-arm64g3-16-64",
+    "instance_family": "r7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "l-x86iavx512-44-340",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "l-x86iavx512-16-64-t4",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "l-x86aavx2-45-172-l4-4",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "a.linux.b200.2",
+    "instance_family": "B200",
+    "vendor": "Nvidia",
+    "model": "Nvidia B200",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.12xlarge.ephemeral",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.24xlarge.ephemeral",
+    "instance_family": "c5",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.16xlarge.spr",
+    "instance_family": "c7i",
+    "vendor": "Intel",
+    "model": "Intel Sapphire Rapids",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "linux.p3.8xlarge.nvidia.gpu",
+    "instance_family": "p3",
+    "vendor": "Nvidia",
+    "model": "Nvidia V100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "windows.8xlarge.nvidia.gpu",
+    "instance_family": "p3",
+    "vendor": "Nvidia",
+    "model": "Nvidia V100",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "windows.8xlarge.nvidia.gpu.nonephemeral",
+    "instance_family": "p3",
+    "vendor": "Nvidia",
+    "model": "Nvidia V100",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "wincanarylf.l-x86iavx512-8-64",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "c3",
+    "instance_family": "c3",
+    "vendor": "Intel",
+    "model": "Intel Ivy Bridge",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "c5a",
+    "instance_family": "c5a",
+    "vendor": "AMD",
+    "model": "AMD EPYC (Rome)",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "c5ad",
+    "instance_family": "c5ad",
+    "vendor": "AMD",
+    "model": "AMD EPYC (Rome)",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "c5d",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "c5n",
+    "instance_family": "c5n",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "c6i",
+    "instance_family": "c6i",
+    "vendor": "Intel",
+    "model": "Intel Ice Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "c6id",
+    "instance_family": "c6id",
+    "vendor": "Intel",
+    "model": "Intel Ice Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "c6in",
+    "instance_family": "c6in",
+    "vendor": "Intel",
+    "model": "Intel Ice Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "m6id",
+    "instance_family": "m6id",
+    "vendor": "Intel",
+    "model": "Intel Ice Lake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "m7gd",
+    "instance_family": "m7gd",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "m8gd",
+    "instance_family": "m8gd",
+    "vendor": "ARM",
+    "model": "AWS Graviton4",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "r5d",
+    "instance_family": "r5d",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "x86_64 (Intel)"
+  },
+  {
+    "runner": "a100-runner",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "awsa100.linux.4xlarge",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "awsa100.linux.gcp.a100",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.gcp.a100",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.gcp.a100.large",
+    "instance_family": "A100",
+    "vendor": "Nvidia",
+    "model": "Nvidia A100",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux-mi300-gpu-2",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux-mi300-gpu-4",
+    "instance_family": "amd-mi300",
+    "vendor": "AMD",
+    "model": "AMD MI300",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux-mi355-1gpu-pytorch",
+    "instance_family": "amd-mi355",
+    "vendor": "AMD",
+    "model": "AMD MI355",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "macos-12",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-12-xl",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "m1-pro-32-macos15",
+    "instance_family": "apple-m1",
+    "vendor": "Apple",
+    "model": "Apple M1 Pro",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "m2-24-macos15",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "m2-max-96-macos15",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2 Max",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "rtx-40x0-build",
+    "instance_family": "N/A",
+    "vendor": "Nvidia",
+    "model": "Nvidia RTX 40-series",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "rtx-40x0-test",
+    "instance_family": "N/A",
+    "vendor": "Nvidia",
+    "model": "Nvidia RTX 40-series",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "rtx-50x0-build",
+    "instance_family": "N/A",
+    "vendor": "Nvidia",
+    "model": "Nvidia RTX 50-series",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "rtx-50x0-test",
+    "instance_family": "N/A",
+    "vendor": "Nvidia",
+    "model": "Nvidia RTX 50-series",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "ubuntu-20.04",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "ubuntu-20.04-16x",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "ubuntu-20.04-xl",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "ubuntu-22.04-arm",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "ARM64 (Unknown)"
   }
 ]

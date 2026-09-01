@@ -118,7 +118,27 @@ def load_lookup_tables():
 # under a different environment prefix -- the vendor/architecture lookup only
 # has one row per instance type, so these prefixes are stripped before
 # falling back to "(unmapped)".
-ENV_PREFIXES = ("c-mt-rel-", "c-mt-", "mt-rel-", "lf-rel-", "mt-", "lf-")
+#
+# `ephemeral.` is test-infra's own prefix for the ephemeral variant of a
+# scale-config.yml runner_type (same instance_type, is_ephemeral: true) --
+# see pytorch/test-infra's scale-runners lambda, which generates both a
+# plain and an `ephemeral.`-prefixed entry per instance type. `c-` alone
+# (no `mt`/`lf` provider) is ci-infra's bare canary marker for an OSDC
+# runner label with no provider segment -- see the `c` field in
+# pytorch/ci-infra's osdc/docs/runner_naming_convention.md. `canary.` is an
+# older Meta canary-fleet prefix predating the `c-`/`c-mt-` scheme above,
+# no longer used for new labels but still seen on historical data.
+ENV_PREFIXES = (
+    "c-mt-rel-",
+    "c-mt-",
+    "mt-rel-",
+    "lf-rel-",
+    "mt-",
+    "lf-",
+    "ephemeral.",
+    "c-",
+    "canary.",
+)
 
 
 def resolve_arch(runner_type, runner_to_arch):
@@ -517,6 +537,7 @@ def render_coverage_gaps(gaps):
     that can't be derived at all (AMD's GPU label mapping) is called out by
     the "AMD runner_type not in GPU label mapping" line and excluded from
     the AMD total, which render_report() discloses separately."""
+    mappings_link = '<p><a href="../../mappings/index.html">Review all mappings &amp; gaps &rarr;</a></p>'
     if not all(items == [] for items in gaps.values()):
         items_html = "\n".join(
             f"<li><strong>{html.escape(label)}:</strong> {len(items)} runner_type(s) -- "
@@ -524,8 +545,8 @@ def render_coverage_gaps(gaps):
             for label, items in gaps.items()
             if items
         )
-        return f"<h3>Coverage gaps</h3><ul>{items_html}</ul>"
-    return "<h3>Coverage gaps</h3><p>None.</p>"
+        return f"<h3>Coverage gaps</h3><ul>{items_html}</ul>{mappings_link}"
+    return f"<h3>Coverage gaps</h3><p>None.</p>{mappings_link}"
 
 
 def compute_month_totals(year_month):
@@ -644,6 +665,155 @@ def compute_month_totals(year_month):
         "has_gaps": has_gaps,
         "amd_unresolved_gpu_duration": amd_unresolved_gpu_duration,
     }
+
+
+def discover_months():
+    """Every month with a FOCUS extract on disk -- same test snapshot.py uses
+    to decide a month is present at all."""
+    return sorted(
+        p.name for p in DATA_ROOT.iterdir() if p.is_dir() and (p / "focus_totals.json").exists()
+    )
+
+
+def collect_all_gaps():
+    """Unions compute_month_totals()'s "gaps" dict across every month found
+    under data/, so the Mappings page can show every runner_type/instance
+    family that's ever gone unmapped -- not just whichever month happens to
+    be rendered last. A gap that only showed up in one past month (e.g. a
+    runner_type retired since) still belongs here: the lookup table is still
+    missing it, so it's still worth resolving even if it means zero cost is
+    being mis-bucketed this month.
+
+    Returns {category: {item: sorted [year_month, ...]}}."""
+    all_gaps = {}
+    for year_month in discover_months():
+        try:
+            totals = compute_month_totals(year_month)
+        except (FileNotFoundError, KeyError):
+            continue
+        for category, items in totals["gaps"].items():
+            months_by_item = all_gaps.setdefault(category, {})
+            for item in items:
+                months_by_item.setdefault(item, []).append(year_month)
+    return all_gaps
+
+
+def render_mappings_page():
+    """Renders a standalone page listing every row of the vendor/architecture
+    and GPU label lookup tables -- the spreadsheet-tab equivalent the old
+    sheet had for eyeballing the raw mapping data -- plus a Coverage gaps
+    table up top highlighting every runner_type/instance family seen in a
+    month's data that the lookup tables don't recognize, so gaps are visible
+    in the same place as the tables they belong in, not just buried in each
+    month's report."""
+    with open(MAPPINGS_ROOT / "instance_vendor_translations.json") as f:
+        translations = json.load(f)
+    with open(MAPPINGS_ROOT / "gpu_label_mappings.json") as f:
+        gpu_mappings_raw = json.load(f)
+
+    all_gaps = collect_all_gaps()
+    has_gaps = any(all_gaps.values())
+
+    def render_seen_in(months):
+        months = sorted(months)
+        if len(months) <= 3:
+            return ", ".join(months)
+        return f"{len(months)} months, {months[0]} → {months[-1]}"
+
+    gaps_rows = "\n".join(
+        f"<tr><td>{html.escape(category)}</td><td>{html.escape(item)}</td>"
+        f"<td>{html.escape(render_seen_in(months))}</td></tr>"
+        for category, months_by_item in all_gaps.items()
+        for item, months in sorted(months_by_item.items())
+    )
+    gaps_section = (
+        f"""
+    <h2>Coverage gaps</h2>
+    <p>Every runner_type/instance family seen in a month's data that the
+    tables below don't recognize -- resolving one here removes it from this
+    list and from the "N/A" bucket in that month's report.</p>
+    <table class="gaps-table">
+      <thead><tr><th>Gap</th><th>Runner type / instance family</th><th>Seen in</th></tr></thead>
+      <tbody>{gaps_rows}</tbody>
+    </table>
+    """
+        if has_gaps
+        else "<h2>Coverage gaps</h2><p>None.</p>"
+    )
+
+    translation_rows = "\n".join(
+        f"<tr><td>{html.escape(row['runner'])}</td>"
+        f"<td>{html.escape(row['instance_family'])}</td>"
+        f"<td>{html.escape(row['vendor'])}</td>"
+        f"<td>{html.escape(row['model'])}</td>"
+        f"<td>{html.escape(row['architecture'])}</td></tr>"
+        for row in sorted(translations, key=lambda r: r["runner"])
+    )
+
+    gpu_rows = "\n".join(
+        f"<tr><td>{html.escape(row['label'])}</td>"
+        f"<td>{html.escape(row['gpu'])}</td>"
+        f"<td>{row['multiplier']}</td></tr>"
+        for row in sorted(gpu_mappings_raw, key=lambda r: r["label"])
+    )
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PyTorch Foundation CI Reports -- Mappings</title>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }}
+  table {{ border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.9rem; }}
+  th, td {{ border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; }}
+  thead th {{ background: #f4f4f4; position: sticky; top: 0; }}
+  .gaps-table tr {{ background: #fff3cd; }}
+  .gaps-table thead th {{ background: #ffe69c; }}
+  .nav {{ margin-bottom: 1rem; }}
+  input.filter {{ padding: 0.4rem; margin-bottom: 0.5rem; width: 100%; max-width: 320px; box-sizing: border-box; }}
+</style>
+</head>
+<body>
+<p class="nav"><a href="../index.html">&larr; Back to Trend</a></p>
+<h1>Mappings</h1>
+<p>The vendor/architecture and GPU label lookup tables used to bucket every
+month's report, for reviewing coverage in one place instead of only inside
+a given month's report.</p>
+
+{gaps_section}
+
+<h2>Vendor / architecture lookup</h2>
+<input class="filter" id="filter-translations" type="text" placeholder="Filter by runner, vendor, model, or architecture...">
+<table id="table-translations">
+  <thead><tr><th>Runner</th><th>Instance family</th><th>Vendor</th><th>Model</th><th>Architecture</th></tr></thead>
+  <tbody>{translation_rows}</tbody>
+</table>
+
+<h2>GPU label mappings (AMD cost multiplier)</h2>
+<input class="filter" id="filter-gpu" type="text" placeholder="Filter by label or GPU...">
+<table id="table-gpu">
+  <thead><tr><th>Label</th><th>GPU</th><th>Multiplier</th></tr></thead>
+  <tbody>{gpu_rows}</tbody>
+</table>
+
+<script>
+  function wireFilter(inputId, tableId) {{
+    const input = document.getElementById(inputId);
+    const rows = document.querySelectorAll(`#${{tableId}} tbody tr`);
+    input.addEventListener('input', () => {{
+      const needle = input.value.toLowerCase();
+      rows.forEach(row => {{
+        row.style.display = row.textContent.toLowerCase().includes(needle) ? '' : 'none';
+      }});
+    }});
+  }}
+  wireFilter('filter-translations', 'table-translations');
+  wireFilter('filter-gpu', 'table-gpu');
+</script>
+
+</body>
+</html>
+"""
 
 
 def render_report(year_month):
