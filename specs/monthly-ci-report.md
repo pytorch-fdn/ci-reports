@@ -197,10 +197,14 @@ with plain static output first.
 
 The runner→vendor/architecture mapping is hand-maintained and may have
 gaps or mistakes. `render_coverage_gaps()` in `ci_reports/render.py`
-already fails loudly (rather than defaulting silently) on any instance
-family or runner type missing from the mapping — this behavior must remain
-a hard failure, not a warning, as the pipeline evolves. In addition, the
-finalize job should run this same check as a **CI gate**, not only at
+discloses (rather than defaulting silently past) any instance family or
+runner type missing from the mapping — supersedes an earlier decision to
+hard-fail the render on a gap. A gap no longer blocks a month's report or
+snapshot entry from being produced: cost that's known but unmapped to an
+architecture is still counted, bucketed under an "N/A" row instead, so one
+missing runner type doesn't take down an otherwise-usable report. In
+addition, the finalize job should run this same check as a **CI gate**, not
+only at
 render time: given a month's raw extracted data, assert every distinct
 runner_type/instance family it contains is present in the mapping before
 finalizing, so a newly-introduced unmapped runner type is caught in review
@@ -222,6 +226,98 @@ with no corresponding entry in
 `ci_reports/mappings/instance_vendor_translations.json` or anywhere else in
 this codebase. Not reintroduced without input on what it should map to —
 guessing risks silently misclassifying real instance families.
+
+### Resolving gaps: where runner-label formats are defined
+
+Two runner label formats seen among Meta's unmapped gaps have a known
+external source of truth. Check these before treating either one as
+unresolvable:
+
+- `l-<family>-<size>-<id>` (e.g. `l-arm64g3-44-340`): an OSDC node
+  definition from `pytorch/ci-infra`, which maps the label to an AWS
+  instance type.
+- `ephemeral.linux.<size>.<variant>` (e.g. `ephemeral.linux.10xlarge.avx2`):
+  defined in `pytorch/test-infra`'s
+  [`.github/scale-config.yml`](https://github.com/pytorch/test-infra/blob/main/.github/scale-config.yml),
+  which maps the label to an `instance_type` (an AWS instance type). A label
+  no longer in the current file may be an older, since-removed entry — check
+  that file's git history for the label before concluding it has no mapping.
+
+Either way, the AWS instance type is the bridge to
+`ci_reports/mappings/instance_vendor_translations.json`'s `instance_family`
+column, not something this repo can derive on its own from the label text.
+
+This lookup has been done once already. Two things came out of it besides
+new mapping-table rows:
+
+- `ENV_PREFIXES` in `ci_reports/render.py` gained `"ephemeral."` and bare
+  `"c-"`. `ephemeral.` is test-infra's own prefix for the ephemeral variant
+  of a `scale-config.yml` runner_type (same `instance_type`, just
+  `is_ephemeral: true`); bare `c-` (no `mt`/`lf` provider segment) is
+  ci-infra's canary marker for an OSDC label with no provider. Both strip
+  down to a label the table already has a row for, the same way the
+  existing `mt-`/`lf-`/`-rel-` prefixes do — no new data needed, just wider
+  stripping.
+- A dozen rows were added where `runner` equals `instance_family` (e.g.
+  `c5a`, `c5ad`, `m7gd`) purely so `family_to_arch` recognizes a bare AWS
+  instance-family code that shows up in the LF cost data with no
+  corresponding runner label at all. This mirrors the one precedent that
+  already existed (`B200`) and is now the established pattern for that
+  situation — it is not a malformed or redundant row when you see one.
+
+Not every unmapped Meta label has a source in either repo. Labels already
+searched (via `git log -S`/`-G` across test-infra's and pytorch/pytorch's
+full `scale-config.yml`/`lf-scale-config.yml` history) and confirmed absent
+include the `linux.20_04.*` family and a long tail of ad-hoc/personal/test labels (bare
+`cpu`/`gpu`/`linux`, `raspberry-pi`, `bm-runner`, one-off names like
+`jean.test.gpu`) that were clearly never meant to be centrally defined.
+Don't re-run the same clone-and-pickaxe search for these without new
+evidence they've since been added somewhere.
+
+`ubuntu-20.04`, `ubuntu-20.04-16x`, `ubuntu-20.04-xl`, and `ubuntu-22.04-arm`
+are absent from `scale-config.yml` for a different reason: they're
+GitHub-hosted runners (standard and org-configured "larger runner" size
+tiers, plus a GitHub-hosted Arm64 image), not self-hosted fleet instances,
+so they were never going to be in that file. GitHub runs its hosted Linux
+runners on Microsoft Azure VMs but does not publicly disclose the physical
+CPU vendor or model for either the x86 or Arm64 hosted images, so these map
+to the same `"x86_64 (Unknown)"` / `"ARM64 (Unknown)"` generic buckets
+already used for `4-core-ubuntu`, `16-core-ubuntu`, and `ubuntu-24.04-arm`
+— not a guessed chip name.
+
+A further batch (`a100-runner`, `awsa100.linux.*`, `linux.gcp.a100*`,
+`linux-mi300-gpu-*`, `linux-mi355-1gpu-pytorch`, `macos-12*`,
+`m1-pro-32-macos15`, `m2-24-macos15`, `m2-max-96-macos15`,
+`canary.linux.2xlarge`, `rtx-40x0-*`, `rtx-50x0-*`) was resolved directly
+from known hardware identity rather than a repo lookup — these labels
+self-describe the GPU/chip/instance family in the name (`a100`, `mi300`,
+`mi355`, `m1-pro`, `m2`, `rtx-40x0`) or are an old naming-scheme variant of
+an already-mapped label (`canary.` is a retired Meta canary prefix,
+stripped by `ENV_PREFIXES` the same way `c-`/`c-mt-` are). The RTX and
+GCP-hosted A100 labels aren't real AWS/GCP instance types, so their
+`instance_family` is `"N/A"` (RTX) or a placeholder GPU-family key like
+`"A100"` (same convention as the existing OSDC-derived A100/H100/B200
+rows) — not something derivable from `pytorch/ci-infra` or
+`pytorch/test-infra`.
+
+### Mappings page
+
+The legacy spreadsheet had a tab listing every runner-type mapping for
+manual review; `render_mappings_page()` in `ci_reports/render.py`
+reproduces that as a standalone site page (`data/site/mappings/index.html`,
+built by `publish.py` alongside the per-month reports and linked from both
+the Trend landing page and each month's "Coverage gaps" section). It lists
+every row of `instance_vendor_translations.json` and
+`gpu_label_mappings.json` in full (each with a client-side text filter), and
+a "Coverage gaps" table above them highlighting every runner_type/instance
+family any month's data has hit that the lookup tables don't recognize —
+the same categories `compute_month_totals()` already reports per month
+(see above), unioned via `collect_all_gaps()` across every month found
+under `data/` rather than only the latest one, so a gap that only occurred
+in an older month still surfaces for resolution. Each gap row's "Seen in"
+column lists the affected months directly when there are three or fewer,
+or collapses to a count and first/last-seen range otherwise, so a
+long-running gap doesn't turn the row into an unreadable wall of dates.
 
 ## Hosting
 
