@@ -763,7 +763,7 @@ def render_mappings_page():
 <meta charset="utf-8">
 <title>PyTorch Foundation CI Reports -- Mappings</title>
 <style>
-  body {{ font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }}
+  body {{ font-family: system-ui, sans-serif; max-width: min(1800px, 96vw); margin: 2rem auto; padding: 0 1rem; }}
   table {{ border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; font-size: 0.9rem; }}
   th, td {{ border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; }}
   thead th {{ background: #f4f4f4; position: sticky; top: 0; }}
@@ -893,7 +893,7 @@ def render_report(year_month):
 <meta charset="utf-8">
 <title>PyTorch Foundation CI Report -- {html.escape(year_month)}</title>
 <style>
-  body {{ font-family: system-ui, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }}
+  body {{ font-family: system-ui, sans-serif; max-width: min(1800px, 96vw); margin: 2rem auto; padding: 0 1rem; }}
   table {{ border-collapse: collapse; width: 100%; margin-bottom: 1rem; }}
   th, td {{ border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; }}
   tr.total td {{ font-weight: bold; border-top: 2px solid #333; }}
