@@ -1979,5 +1979,89 @@
     "vendor": "ARM",
     "model": "ARM64",
     "architecture": "ARM64 (Unknown)"
+  },
+  {
+    "runner": "linux",
+    "instance_family": "N/A",
+    "vendor": "x86_64",
+    "model": "N/A",
+    "architecture": "x86_64 (Unknown)"
+  },
+  {
+    "runner": "linux-mi355-1gpu-pytorch.dpx-test",
+    "instance_family": "amd-mi355",
+    "vendor": "AMD",
+    "model": "AMD MI355",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "rel-l-arm64g3-44-340",
+    "instance_family": "r7g",
+    "vendor": "ARM",
+    "model": "AWS Graviton3",
+    "architecture": "ARM64 (AWS Graviton)"
+  },
+  {
+    "runner": "rel-l-x86iavx512-44-340",
+    "instance_family": "r7a",
+    "vendor": "AMD",
+    "model": "AMD Genoa",
+    "architecture": "x86_64 (AMD)"
+  },
+  {
+    "runner": "windows-11-arm",
+    "instance_family": "N/A",
+    "vendor": "ARM",
+    "model": "ARM64",
+    "architecture": "ARM64 (Unknown)"
+  },
+  {
+    "runner": "amd-sandbox-linux-doks.rocm.gpu.mi350.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-sandbox-linux.rocm.gpu.mi350.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-sandbox-linux.rocm.gpu.mi350.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.ecosystem.mi350.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.ecosystem.mi350.8",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.2.test-control",
+    "instance_family": "amd-mi325",
+    "vendor": "AMD",
+    "model": "AMD MI325",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.meta-pytorch.mi350.4",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
   }
 ]
