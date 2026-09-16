@@ -26,7 +26,7 @@
   .data-table-wrap { overflow-x: auto; margin-top: 1.5rem; }
   table.data-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
   table.data-table th, table.data-table td { border: 1px solid #ccc; padding: 0.35rem 0.6rem; text-align: right; white-space: nowrap; }
-  table.data-table th:first-child, table.data-table td:first-child { text-align: left; }
+  table.data-table th:nth-child(-n+3), table.data-table td:nth-child(-n+3) { text-align: left; white-space: normal; }
   table.data-table tr.total td { font-weight: bold; border-top: 2px solid #333; }
   table.data-table thead th { background: #f4f4f4; }
   table.data-table caption { text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; caption-side: top; }
@@ -183,6 +183,29 @@ async function main() {
   const resp = await fetch('trend_snapshot.json');
   const snapshot = await resp.json();
   const allMonths = Object.keys(snapshot).sort();
+
+  // Where each architecture's capacity is hosted and who funds it --
+  // fetched from its own file rather than folded into trend_snapshot.json
+  // (whose top-level keys are all treated as months, see collectExtraArchKeys
+  // above) so this stays a single source of truth shared with the mapping
+  // table's own copy in ci_reports/mappings/architecture_sources.json. A
+  // failed fetch (or a key missing from it -- e.g. an extra/unmapped
+  // architecture from collectExtraArchKeys) degrades to "--" rather than
+  // breaking the chart.
+  let architectureSources = {};
+  try {
+    const sourcesResp = await fetch('architecture_sources.json');
+    if (sourcesResp.ok) {
+      const rows = await sourcesResp.json();
+      architectureSources = Object.fromEntries(rows.map(row => [row.architecture, row]));
+    }
+  } catch (e) {
+    // Leave architectureSources empty -- every row renders "--" below.
+  }
+  function sourceField(arch, field) {
+    const row = architectureSources[arch];
+    return row && row[field] && row[field].length ? row[field].join(', ') : '—';
+  }
 
   let metric = 'financials_total';
   let windowSize = 12;
@@ -433,6 +456,8 @@ async function main() {
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     headRow.appendChild(textEl('th', 'Architecture'));
+    headRow.appendChild(textEl('th', 'Location'));
+    headRow.appendChild(textEl('th', 'Funded By'));
     months.forEach(m => headRow.appendChild(textEl('th', m)));
     thead.appendChild(headRow);
     table.appendChild(thead);
@@ -441,6 +466,8 @@ async function main() {
     rows.forEach(a => {
       const tr = document.createElement('tr');
       tr.appendChild(textEl('td', a));
+      tr.appendChild(textEl('td', sourceField(a, 'location')));
+      tr.appendChild(textEl('td', sourceField(a, 'funded_by')));
       months.forEach(m => {
         const val = (snapshot[m][archKey] || {})[a] || 0;
         tr.appendChild(textEl('td', fmtCell(val)));
@@ -453,6 +480,8 @@ async function main() {
     const totalRow = document.createElement('tr');
     totalRow.className = 'total';
     totalRow.appendChild(textEl('td', 'Total'));
+    totalRow.appendChild(textEl('td', ''));
+    totalRow.appendChild(textEl('td', ''));
     months.forEach(m => {
       const arch = snapshot[m][archKey] || {};
       const total = Object.values(arch).reduce((a, b) => a + b, 0);
