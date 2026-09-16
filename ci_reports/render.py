@@ -754,6 +754,91 @@ def collect_all_gaps():
     return all_gaps
 
 
+def resolve_runner_key(runner_type, runner_to_arch):
+    """Same match order as resolve_arch(), but returns the matched
+    translation-table key instead of its architecture -- used to mark a
+    Meta/AMD runner_type "seen" against its own table row rather than just
+    resolving what it costs."""
+    if runner_type in runner_to_arch:
+        return runner_type
+    for prefix in ENV_PREFIXES:
+        if runner_type.startswith(prefix):
+            base = runner_type[len(prefix) :]
+            if base in runner_to_arch:
+                return base
+    return None
+
+
+def collect_label_last_seen():
+    """For every row of instance_vendor_translations.json, the most recent
+    month (from discover_months()) its runner/instance family actually
+    showed up in a month's raw data -- so the Mappings page can show "last
+    active" next to each row, the same way collect_all_gaps() shows "Seen
+    in" for gap items.
+
+    Meta/AMD rows are matched by their literal `runner_type` string (via
+    resolve_runner_key(), the same ENV_PREFIXES-stripping resolve_arch()
+    uses) against the `runner` column. LF rows have no runner_type at all --
+    FOCUS only carries a ChargeDescription that resolves to an instance
+    family (see bucket_lf()) -- so those are matched by `instance_family`
+    instead, split by the same Windows/non-Windows OS branch bucket_lf()
+    uses (a windows.* row's instance_family names the same family as its
+    non-Windows counterpart, e.g. windows.g5.4xlarge.nvidia.gpu -> "g5", so
+    without the OS branch a Linux g5 FOCUS line would also light up the
+    Windows row and vice versa).
+
+    Several rows share one instance_family (e.g. every linux.g5.* size), so
+    a single FOCUS line marks all of them seen -- FOCUS resolves a family,
+    not a specific label, and this is inherent to the data, not a bug here.
+
+    Returns {row_key: "YYYY-MM"}, where row_key is the literal runner string
+    for a Meta/AMD-style match, or ("family", instance_family, is_windows)
+    for an LF-style match -- is_windows mirrors the same Windows/non-Windows
+    split family_to_arch/bucket_lf() use, not the raw FOCUS OS string,
+    since a non-Windows family match doesn't otherwise care which specific
+    OS (Linux, SUSE, RHEL, ...) FOCUS reported. Rows never observed in any
+    month are simply absent."""
+    last_seen = {}
+
+    def mark(key, year_month):
+        if key not in last_seen or year_month > last_seen[key]:
+            last_seen[key] = year_month
+
+    for year_month in discover_months():
+        month_dir = DATA_ROOT / year_month
+        ch_dir = month_dir / "clickhouse"
+        try:
+            with open(month_dir / "focus_totals.json") as f:
+                focus = json.load(f)
+            with open(ch_dir / "meta_by_runner_type.json") as f:
+                meta_rows = json.load(f)
+            with open(ch_dir / "amd_by_runner_type.json") as f:
+                amd_rows = json.load(f)
+            with open(ch_dir / "intel_jobs_lf.json") as f:
+                intel_jobs_lf = json.load(f)
+            with open(ch_dir / "intel_jobs_excluding_lf.json") as f:
+                intel_jobs_meta = json.load(f)
+        except (FileNotFoundError, KeyError):
+            continue
+
+        runner_to_arch, _family_to_arch, _gpu_mappings = load_lookup_tables()
+
+        for row in (*meta_rows, *amd_rows, *intel_jobs_lf, *intel_jobs_meta):
+            matched = resolve_runner_key(row["runner_type"], runner_to_arch)
+            if matched is not None:
+                mark(matched, year_month)
+
+        for description in focus["financials"]:
+            match = INSTANCE_HOUR_RE.search(description)
+            if not match:
+                continue
+            os_name, instance_type = match.groups()
+            family = instance_type.split(".")[0]
+            mark(("family", family, os_name == "Windows"), year_month)
+
+    return last_seen
+
+
 def render_mappings_page():
     """Renders a standalone page listing every row of the vendor/architecture
     and GPU label lookup tables -- the spreadsheet-tab equivalent the old
@@ -771,12 +856,22 @@ def render_mappings_page():
 
     all_gaps = collect_all_gaps()
     has_gaps = any(all_gaps.values())
+    last_seen = collect_label_last_seen()
+    seen_months = discover_months()
 
     def render_seen_in(months):
         months = sorted(months)
         if len(months) <= 3:
             return ", ".join(months)
         return f"{len(months)} months, {months[0]} → {months[-1]}"
+
+    def last_seen_for(row):
+        if row["runner"] in last_seen:
+            return last_seen[row["runner"]]
+        if row["instance_family"] == "N/A":
+            return None
+        key = ("family", row["instance_family"], row["runner"].startswith("windows."))
+        return last_seen.get(key)
 
     gaps_rows = "\n".join(
         f"<tr><td>{html.escape(category)}</td><td>{html.escape(item)}</td>"
@@ -804,7 +899,8 @@ def render_mappings_page():
         f"<td>{html.escape(row['instance_family'])}</td>"
         f"<td>{html.escape(row['vendor'])}</td>"
         f"<td>{html.escape(row['model'])}</td>"
-        f"<td>{html.escape(row['architecture'])}</td></tr>"
+        f"<td>{html.escape(row['architecture'])}</td>"
+        f"<td>{html.escape(last_seen_for(row) or '—')}</td></tr>"
         for row in sorted(translations, key=lambda r: r["runner"])
     )
 
@@ -849,9 +945,16 @@ a given month's report.</p>
 {gaps_section}
 
 <h2>Vendor / architecture lookup</h2>
+<p>Last seen reflects only the months present in this machine's local
+<code>data/</code>{
+    f" ({seen_months[0]} &rarr; {seen_months[-1]})" if seen_months else ""
+} -- "—" means never observed there, not necessarily retired. A row whose
+instance family is shared by several labels (e.g. every linux.g5.* size)
+shows the same month for all of them, since FOCUS resolves to a family, not
+a specific label.</p>
 <input class="filter" id="filter-translations" type="text" placeholder="Filter by runner, vendor, model, or architecture...">
 <table id="table-translations">
-  <thead><tr><th>Runner</th><th>Instance family</th><th>Vendor</th><th>Model</th><th>Architecture</th></tr></thead>
+  <thead><tr><th>Runner</th><th>Instance family</th><th>Vendor</th><th>Model</th><th>Architecture</th><th>Last seen</th></tr></thead>
   <tbody>{translation_rows}</tbody>
 </table>
 

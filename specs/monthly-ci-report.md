@@ -331,6 +331,37 @@ column lists the affected months directly when there are three or fewer,
 or collapses to a count and first/last-seen range otherwise, so a
 long-running gap doesn't turn the row into an unreadable wall of dates.
 
+The `instance_vendor_translations.json` table also carries a **Last seen**
+column, from `collect_label_last_seen()`: the most recent month (across
+every month found under `data/`) that row's runner or instance family
+actually appeared in that month's raw FOCUS/ClickHouse extract, "—" if
+never observed there. This is a "last active" signal for a lookup row that
+already resolves cleanly, distinct from "Coverage gaps" (which tracks
+labels the lookup tables don't recognize at all).
+
+Meta/AMD rows match on the literal `runner_type` string, via the same
+`ENV_PREFIXES`-stripping order `resolve_arch()` uses (a sibling helper,
+`resolve_runner_key()`, returns the matched table key instead of an
+architecture). LF rows have no `runner_type` — FOCUS only carries a
+`ChargeDescription` that resolves to an instance family (see `bucket_lf()`)
+— so those match on `instance_family` instead, split by the same
+Windows/non-Windows branch `bucket_lf()` uses (a `windows.*` row's
+`instance_family` names the same family as its non-Windows counterpart,
+e.g. `windows.g5.4xlarge.nvidia.gpu` → `g5`, so without that branch a
+Linux g5 FOCUS line would also mark the Windows row seen, and vice versa).
+Rows with `instance_family: "N/A"` are excluded from the family-match path,
+same as `family_to_arch`.
+
+Because several labels can share one `instance_family` (e.g. every
+`linux.g5.*` size maps to `g5`), a single FOCUS line marks all of them
+"seen" together — FOCUS resolves to a family, not a specific label, so this
+coarseness is inherent to the data rather than a bug in the matching. The
+page also states the window explicitly (`data/`'s first → last discovered
+month): since `data/` is gitignored and per-machine, "last seen" is
+relative to whichever months happen to be present wherever the page was
+published from, not a global record — a reader should not treat a blank
+cell as proof a label is retired.
+
 ### Architecture sources: Location and Funded By
 
 The monthly report's and trend page's Combined architecture table also
