@@ -63,6 +63,7 @@ test:
 	uv run python tests/test_focus_extract.py
 	uv run python tests/test_amd_cost.py
 	uv run python tests/test_sheet_import.py
+	uv run python tests/test_architecture_sources.py
 
 lint:
 	prek run --all-files

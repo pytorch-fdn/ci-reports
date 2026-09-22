@@ -18,6 +18,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SITE_SRC = REPO_ROOT / "ci_reports" / "site"
+MAPPINGS_ROOT = REPO_ROOT / "ci_reports" / "mappings"
 DATA_ROOT = REPO_ROOT / "data"
 SITE_BUILD = DATA_ROOT / "site"
 
@@ -36,6 +37,15 @@ def publish():
         )
         sys.exit(1)
     shutil.copy(snapshot_path, SITE_BUILD / "trend_snapshot.json")
+
+    # Fetched separately by the trend page's JS (not folded into
+    # trend_snapshot.json, whose top-level keys are all treated as months) so
+    # the Location/Funded By columns come from one source instead of a
+    # second hand-copied duplicate of ci_reports/mappings/architecture_sources.json.
+    shutil.copy(
+        MAPPINGS_ROOT / "architecture_sources.json",
+        SITE_BUILD / "architecture_sources.json",
+    )
 
     import json
 

@@ -1,0 +1,86 @@
+[
+  {
+    "architecture": "x86_64 (Intel)",
+    "location": ["AWS"],
+    "funded_by": ["Amazon", "Meta"],
+    "note": "Every runner label maps to an AWS Intel instance family (e.g. c7i, m6i). AWS capacity is donated credits from Amazon to the LF's AWS account, not LF's own money; Meta's own AWS-hosted usage is funded by Meta directly."
+  },
+  {
+    "architecture": "x86_64 (AMD)",
+    "location": ["AWS", "GitHub-hosted (Azure)"],
+    "funded_by": ["Amazon", "Meta"],
+    "note": "AWS AMD instance families (c6a, c5a, ...) are donated Amazon credits, not LF's own money. GitHub-hosted ubuntu-latest/ubuntu-22.04 runners (Azure-hosted) are funded by Meta only -- LF has no current involvement in GitHub-hosted runner spend."
+  },
+  {
+    "architecture": "x86_64 (Unknown)",
+    "location": ["GitHub-hosted (Azure)"],
+    "funded_by": ["Meta"],
+    "note": "GitHub-hosted runner labels with no instance family in the FOCUS export to identify the exact CPU; GitHub-hosted runners run on Azure and are funded by Meta only -- LF has no current involvement here."
+  },
+  {
+    "architecture": "ARM64 (AWS Graviton)",
+    "location": ["AWS"],
+    "funded_by": ["Amazon", "Meta"],
+    "note": "Graviton is an AWS-only instance family. AWS capacity is donated Amazon credits, not LF's own money; Meta's own AWS-hosted usage is funded by Meta directly."
+  },
+  {
+    "architecture": "ARM64 (Unknown)",
+    "location": ["GitHub-hosted (Azure)"],
+    "funded_by": ["Meta"],
+    "note": "GitHub-hosted Arm images (ubuntu-*-arm, windows-11-arm); GitHub-hosted runners run on Azure and are funded by Meta only -- LF has no current involvement here."
+  },
+  {
+    "architecture": "CUDA",
+    "location": ["AWS", "GCP", "Nvidia lab", "Unknown"],
+    "funded_by": ["Amazon", "Meta", "Nvidia", "Unknown"],
+    "note": "AWS (g4dn/g5/p-family) capacity is donated Amazon credits, not LF's own money; Meta's own AWS-hosted usage is funded by Meta directly. DGX-labeled runners (linux.dgx.b200) and rtx-40x0/50x0-* runners are both Nvidia-hosted and Nvidia-funded -- the RTX ones serve NVIDIA's own out-of-tree Windows CI. A subset of labels (linux.gcp.*, gcp-*-runner) indicate GCP-hosted capacity whose funder is still unconfirmed, and a few (a100-runner, B200, a.linux.b200.2) name no identifiable host at all."
+  },
+  {
+    "architecture": "ROCM",
+    "location": ["AMD lab", "DigitalOcean", "Vultr"],
+    "funded_by": ["AMD"],
+    "note": "AMD-donated capacity; cost is an estimate derived from GPU-hours x a per-GPU multiplier, not billing data. Runner labels name the host directly (amd-sandbox-linux-doks.* = DigitalOcean Kubernetes, amd-vtr-*/*.vultr.test = Vultr). Some labels (*.meta-pytorch, *.ecosystem.*) indicate which org schedules work on this AMD-donated hardware, not who funded it -- Funded By reflects the funder, not the scheduler."
+  },
+  {
+    "architecture": "XPU",
+    "location": ["AWS", "Intel lab"],
+    "funded_by": ["Amazon", "Meta", "Intel"],
+    "note": "Most XPU hours are Intel test jobs carved out of LF's/Meta's own AWS-hosted runners by job-name matching (see redistribute_intel_jobs_to_xpu() in render.py) -- that AWS capacity is donated Amazon credits (for LF's portion) or Meta's own spend (for Meta's portion), not Intel hardware. A smaller portion is genuinely Intel-hosted and Intel-funded (linux.client.xpu, linux.ril.xpu, linux.hpu.gaudi3.8)."
+  },
+  {
+    "architecture": "TPU",
+    "location": ["Google Cloud"],
+    "funded_by": ["Google"],
+    "note": "Member-self-hosted; cost is not visible to ClickHouse (see specs/monthly-ci-report.md)."
+  },
+  {
+    "architecture": "s390x",
+    "location": ["IBM"],
+    "funded_by": ["IBM"],
+    "note": "Member-self-hosted; cost is not visible to ClickHouse (see specs/monthly-ci-report.md)."
+  },
+  {
+    "architecture": "macOS",
+    "location": ["GitHub-hosted (Apple silicon)", "Unknown"],
+    "funded_by": ["Meta", "Unknown"],
+    "note": "GitHub-hosted macos-13/14/15 runners are funded by Meta only -- LF has no current involvement in GitHub-hosted runner spend. Some self-hosted macos-m1-*/m2-* labels have no confirmed host or funder."
+  },
+  {
+    "architecture": "Windows",
+    "location": ["AWS", "GitHub-hosted (Azure)"],
+    "funded_by": ["Amazon", "Meta"],
+    "note": "windows.* labels are AWS instance types -- donated Amazon credits, not LF's own money. windows-latest/-2022 are GitHub-hosted on Azure and funded by Meta only -- LF has no current involvement in GitHub-hosted runner spend."
+  },
+  {
+    "architecture": "Other",
+    "location": ["AWS"],
+    "funded_by": ["Amazon"],
+    "note": "Synthesized for FOCUS charge lines billed in non-instance-hour units (storage, data transfer, requests, etc.), which have no architecture at all. This is AWS capacity funded by donated Amazon credits, not LF's own money."
+  },
+  {
+    "architecture": "N/A",
+    "location": ["Unknown"],
+    "funded_by": ["Unknown"],
+    "note": "Cost that could not be mapped to any architecture at all -- see Coverage gaps."
+  }
+]

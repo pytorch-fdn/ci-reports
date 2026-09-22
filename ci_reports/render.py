@@ -95,6 +95,19 @@ def known_architectures():
     return {row["architecture"] for row in translations}
 
 
+def load_architecture_sources():
+    """Hand-maintained {architecture: {"location": [...], "funded_by": [...],
+    "note": str}} from ci_reports/mappings/architecture_sources.json -- where
+    each architecture's capacity is hosted and who pays for it. Unlike the
+    vendor/architecture lookup, this can't be derived from FOCUS or
+    ClickHouse (neither retains a host/region column, and ClickHouse's
+    owning_account has only 3 values, so it can't express member-donated
+    capacity like Intel/Google/IBM), so it's static and reviewed by hand."""
+    with open(MAPPINGS_ROOT / "architecture_sources.json") as f:
+        rows = json.load(f)
+    return {row["architecture"]: row for row in rows}
+
+
 def load_lookup_tables():
     lookup_dir = MAPPINGS_ROOT
     with open(lookup_dir / "instance_vendor_translations.json") as f:
@@ -448,7 +461,14 @@ def render_pie_svg(title, totals, size=200):
 
 
 def render_pivot_table(
-    title, column_label, totals, grand_total, row_keys, value_label="Cost", format_value=None
+    title,
+    column_label,
+    totals,
+    grand_total,
+    row_keys,
+    value_label="Cost",
+    format_value=None,
+    extra_columns=None,
 ):
     """row_keys is the common set of keys shown across every vendor's table
     in a section, so a key absent from this vendor's totals still gets a
@@ -459,21 +479,33 @@ def render_pivot_table(
     `value_label`/`format_value` let a caller reuse this for a non-cost
     metric (e.g. the Runtime section's instance-hours) without every cost
     table having to know about that -- defaults reproduce the original
-    dollar formatting exactly."""
+    dollar formatting exactly.
+
+    `extra_columns` is an optional list of (header, fn(row_key) -> str) for
+    extra per-row columns after the primary key column (e.g. Location,
+    Funded By) -- left as None (the default) reproduces today's two-column
+    output byte-for-byte, so every call site but the Combined architecture
+    tables is unaffected. Extra columns are left blank in the Total row --
+    they describe a single row_key, not an aggregate."""
     if format_value is None:
         format_value = lambda v: f"${v:,.2f}"
+    extra_columns = extra_columns or []
     ordered_keys = sorted(row_keys, key=lambda k: -totals.get(k, 0.0))
+    extra_headers_html = "".join(f"<th>{html.escape(header)}</th>" for header, _ in extra_columns)
     rows_html = "\n".join(
-        f"<tr><td>{html.escape(key)}</td><td>{format_value(totals.get(key, 0.0))}</td></tr>"
+        f"<tr><td>{html.escape(key)}</td>"
+        + "".join(f"<td>{html.escape(fn(key))}</td>" for _, fn in extra_columns)
+        + f"<td>{format_value(totals.get(key, 0.0))}</td></tr>"
         for key in ordered_keys
     )
+    extra_blanks_html = "<td></td>" * len(extra_columns)
     return f"""
     <h4>{html.escape(title)}</h4>
     <table>
-      <thead><tr><th>{html.escape(column_label)}</th><th>{html.escape(value_label)}</th></tr></thead>
+      <thead><tr><th>{html.escape(column_label)}</th>{extra_headers_html}<th>{html.escape(value_label)}</th></tr></thead>
       <tbody>
         {rows_html}
-        <tr class="total"><td>Total</td><td>{format_value(grand_total)}</td></tr>
+        <tr class="total"><td>Total</td>{extra_blanks_html}<td>{format_value(grand_total)}</td></tr>
       </tbody>
     </table>
     """
@@ -487,6 +519,7 @@ def render_pivot_section(
     known_keys=None,
     value_label="Cost",
     format_value=None,
+    annotate_vendors=None,
 ):
     """Renders one Architecture- or OS-style section: a row of Vendor pie
     charts (LF/Meta/AMD/Combined) followed by a row of matching Vendor->Total
@@ -507,13 +540,26 @@ def render_pivot_section(
     the row set is shared, not the order, so e.g. AMD's table still reads
     biggest-to-smallest for AMD even though that differs from LF's or
     Combined's ordering.
+
+    `annotate_vendors` is an optional set of vendor names (e.g. {"Combined"})
+    that get Location/Funded By columns from architecture_sources.json --
+    only the Architecture section's call sites pass this, and only for the
+    Combined table (the per-vendor LF/Meta/AMD tables already carry the
+    vendor as their title, and four side-by-side 4-column tables don't fit).
+    A row missing from the file renders "--" rather than a guess.
     """
     row_keys = {key for totals in per_vendor_totals.values() for key in totals}
     if known_keys:
         row_keys |= set(known_keys)
 
+    annotate_vendors = annotate_vendors or set()
+    sources = load_architecture_sources() if annotate_vendors else {}
+
+    def source_columns(field):
+        return lambda key: ", ".join(sources.get(key, {}).get(field, [])) or "—"
+
     tables = "\n".join(
-        f'<div class="pivot-cell">{render_pivot_table(vendor, column_label, totals, sum(totals.values()), row_keys, value_label, format_value)}</div>'
+        f'<div class="pivot-cell">{render_pivot_table(vendor, column_label, totals, sum(totals.values()), row_keys, value_label, format_value, extra_columns=[("Location", source_columns("location")), ("Funded By", source_columns("funded_by"))] if vendor in annotate_vendors else None)}</div>'
         for vendor, totals in per_vendor_totals.items()
     )
     pies = "\n".join(
@@ -627,11 +673,21 @@ def compute_month_totals(year_month):
     combined_arch = combine_totals(lf_arch, meta_arch, amd_arch)
     combined_os = combine_totals(lf_os, meta_os, amd_os)
 
+    # Architectures with cost/hours this month (or known to the mapping
+    # table at all) but no row in architecture_sources.json -- disclosed the
+    # same way as any other mapping gap, so a "--" Location/Funded By cell
+    # never reads as a confirmed "nowhere"/"no one". Not populated for
+    # truly-unrecognized architecture labels (those are already covered by
+    # the gap categories above and end up in "N/A", which does have a row).
+    known_arch_keys = known_architectures() | set(combined_arch) | {"Other", "N/A"}
+    missing_sources = sorted(known_arch_keys - set(load_architecture_sources()))
+
     gaps = {
         "Meta runner_type not in vendor/architecture lookup": meta_unmapped_arch,
         "AMD runner_type not in GPU label mapping (cost not derived)": amd_unmapped_gpu,
         "AMD runner_type not in vendor/architecture lookup": amd_unmapped_arch,
         "LF instance family not in vendor/architecture lookup": lf_unmapped_family,
+        "Architecture not in the architecture-sources table": missing_sources,
     }
     has_gaps = any(gaps.values())
 
@@ -710,6 +766,8 @@ def render_mappings_page():
         translations = json.load(f)
     with open(MAPPINGS_ROOT / "gpu_label_mappings.json") as f:
         gpu_mappings_raw = json.load(f)
+    with open(MAPPINGS_ROOT / "architecture_sources.json") as f:
+        architecture_sources_raw = json.load(f)
 
     all_gaps = collect_all_gaps()
     has_gaps = any(all_gaps.values())
@@ -757,6 +815,14 @@ def render_mappings_page():
         for row in sorted(gpu_mappings_raw, key=lambda r: r["label"])
     )
 
+    architecture_sources_rows = "\n".join(
+        f"<tr><td>{html.escape(row['architecture'])}</td>"
+        f"<td>{html.escape(', '.join(row['location']))}</td>"
+        f"<td>{html.escape(', '.join(row['funded_by']))}</td>"
+        f"<td>{html.escape(row.get('note', ''))}</td></tr>"
+        for row in sorted(architecture_sources_raw, key=lambda r: r["architecture"])
+    )
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -796,6 +862,18 @@ a given month's report.</p>
   <tbody>{gpu_rows}</tbody>
 </table>
 
+<h2>Architecture sources</h2>
+<p>Where each architecture's capacity is hosted and who funds it -- hand
+maintained (see ci_reports/mappings/architecture_sources.json), since
+neither the FOCUS nor ClickHouse extract retains a host/funder column. A
+Location or Funded By value of "Unknown" means we don't yet know, not that
+none applies.</p>
+<input class="filter" id="filter-sources" type="text" placeholder="Filter by architecture, location, or funder...">
+<table id="table-sources">
+  <thead><tr><th>Architecture</th><th>Location</th><th>Funded By</th><th>Note</th></tr></thead>
+  <tbody>{architecture_sources_rows}</tbody>
+</table>
+
 <script>
   function wireFilter(inputId, tableId) {{
     const input = document.getElementById(inputId);
@@ -809,6 +887,7 @@ a given month's report.</p>
   }}
   wireFilter('filter-translations', 'table-translations');
   wireFilter('filter-gpu', 'table-gpu');
+  wireFilter('filter-sources', 'table-sources');
 </script>
 
 </body>
@@ -842,6 +921,7 @@ def render_report(year_month):
             "Combined": totals["combined_arch"],
         },
         known_keys=known_architectures(),
+        annotate_vendors={"Combined"},
     )
     runtime_arch_section = render_pivot_section(
         "Runtime by architecture",
@@ -859,6 +939,7 @@ def render_report(year_month):
         "and is excluded here.",
         value_label="Hours",
         format_value=lambda v: f"{v:,.1f}",
+        annotate_vendors={"Combined"},
     )
     runtime_os_section = render_pivot_section(
         "Runtime by OS",

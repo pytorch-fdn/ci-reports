@@ -185,6 +185,7 @@ so Trend's cross-month, cross-vendor aggregation doesn't silently mix units
 |---|---|---|
 | Runner → vendor/architecture mapping | In-repo, committed (e.g. `ci_reports/mappings/`) — **not** `data/`, which is gitignored | Not secret; reviewable via normal PRs; see "Mapping coverage checks" below |
 | AMD per-runner GPU cost multiplier | In-repo, committed, alongside the vendor/architecture mapping | Revisited: originally scoped as confidential AMD-supplied data requiring restricted R2 storage; simplified to in-repo per explicit decision, since the resulting figures are already labeled `EstimatedCost` (not a real cost) site-wide — worth revisiting again if AMD ever objects to the raw multiplier itself being public, as distinct from the estimated dollar figures it produces |
+| Architecture → hosting location / funder | In-repo, committed, `ci_reports/mappings/architecture_sources.json`, alongside the other two mapping files | Not secret; provider/site names only (`AWS`, `GCP`, `AMD lab`), no internal datacenter or lab identifiers; see "Architecture sources: Location and Funded By" below |
 | Finalized monthly snapshots | R2 (once provisioned — see "Build order"), snapshot prefix, partitioned by `billing_period` and snapshot date | Contains PyTorch Foundation financial data; partitioned so re-finalizing never overwrites a prior point-in-time snapshot in place |
 
 R2 is the working choice for object storage: private-by-default posture, no
@@ -210,6 +211,17 @@ runner_type/instance family it contains is present in the mapping before
 finalizing, so a newly-introduced unmapped runner type is caught in review
 (via the normal in-repo PR to the mapping file) rather than silently
 producing an incomplete or miscategorized snapshot.
+
+The same disclose-don't-default rule applies to `architecture_sources.json`
+(see "Architecture sources: Location and Funded By" below): an architecture
+missing a row there renders "—" for Location/Funded By rather than a guess,
+and is listed under a dedicated "Architecture not in the
+architecture-sources table" gap category, both in a month's own Coverage
+gaps and on the Mappings page. `tests/test_architecture_sources.py` runs
+the same check as a CI gate — every architecture `known_architectures()`
+(plus the synthesized `Other`/`N/A` buckets) can produce must have an entry,
+and every entry's `architecture` must be a real, known one (catching a
+typo'd name that would otherwise sit in the file unnoticed).
 
 The source spreadsheet itself is not always internally consistent — the
 same runner_type's implied GPU model can differ between its "AMD
@@ -318,6 +330,98 @@ in an older month still surfaces for resolution. Each gap row's "Seen in"
 column lists the affected months directly when there are three or fewer,
 or collapses to a count and first/last-seen range otherwise, so a
 long-running gap doesn't turn the row into an unreadable wall of dates.
+
+### Architecture sources: Location and Funded By
+
+The monthly report's and trend page's Combined architecture table also
+carry a **Location** (hosting provider/site, e.g. `AWS`, `GCP`,
+`AMD lab`) and **Funded By** (e.g. `Amazon`, `Meta`, `AMD`, `Intel`,
+`Nvidia`) column per
+architecture, from `ci_reports/mappings/architecture_sources.json` — a
+new, hand-maintained mapping file, same convention as the other two mapping
+files. Only the Combined table carries these columns: the per-vendor
+(LF/Meta/AMD) tables and the OS pivots are unchanged, since "Funded By" is
+degenerate on a table already titled by vendor and four side-by-side
+4-column tables don't fit.
+
+**This is deliberately hand-maintained, not derived**, and static per
+architecture rather than a per-location hour/cost split (a harder follow-on
+explicitly out of scope for now):
+
+- Neither extractor retains a column that would let this be computed.
+  `focus_extract.py`'s `compute_totals()` collapses the FOCUS Parquet to
+  `ChargeDescription → SUM(...)`, discarding columns that could hint at
+  location (`RegionId`, `RegionName`, `SubAccountId`, ...); ClickHouse's
+  extract carries no region/host column at all.
+- **Location means hosting provider/site, not cloud region.** Region data
+  does exist in the FOCUS Parquet, but is collapsed away as above, and
+  ClickHouse has no region column, so a region-based column would be
+  half-blank (LF/Meta rows populated, AMD rows never). Left as a possible
+  future addition if the FOCUS extract is ever widened to retain it.
+- `owning_account` (ClickHouse's Meta/AMD/LF query filter) only has 3
+  values and is not a retained column, so it can't express member-donated
+  capacity where a third party funds hardware but the job is attributed
+  elsewhere (Intel XPU, Google TPU, IBM s390x) — Funded By needs a richer,
+  hand-maintained model instead.
+- `instance_vendor_translations.json`'s `vendor` column is the chip maker
+  (AMD/Intel/Nvidia/...), not the host or funder, so it can't be reused for
+  this.
+
+**Evidence and known caveats**, recorded here so a future agent neither
+re-derives this from scratch nor contradicts it. The values were drafted
+from runner-label text, which often names its host directly — information
+`resolve_arch()` currently strips or ignores: `doks`/`do-`/`.dotest` →
+DigitalOcean, `amd-vtr-*`/`*.vultr.test` → Vultr, `linux.gcp.*` → GCP,
+`linux.dgx.*` → Nvidia lab, `linux.aws.*` → AWS, `linux.google.tpu*` →
+Google Cloud, `linux.s390x`/`ibm-s390x` → IBM.
+
+`rtx-40x0/50x0-*` → Nvidia lab is a separate, **confirmed** fact rather
+than a label-text inference, so it's listed outside this chain -- see the
+Nvidia bullet below. NVIDIA's Windows-on-Arm CI pool (label `woa-arm64`)
+would map to `Nvidia lab` the same way if it ever appears in the data; it
+currently has no row in `instance_vendor_translations.json` and would
+surface as a coverage gap first.
+
+- **ROCM's Funded By is `AMD` uniformly**, not per-label. Every ROCM row
+  arrives via `owning_account = 'amd'` with ClickHouse's own `cost` column
+  always 0 (see `amd_cost.py`); the dollar figure is derived from a
+  GPU-hours × per-GPU multiplier formula regardless of which sub-fleet the
+  label names. Labels like `*.meta-pytorch`/`*.ecosystem.*` say who
+  *schedules* work on this AMD-donated hardware, not who funded it — that
+  distinction is recorded in the file's `note` field, not in `funded_by`.
+- **AWS capacity is funded by Amazon, not LF.** LF holds the AWS account
+  that most x86_64/ARM64/CUDA/Windows/XPU capacity runs in, but the
+  underlying spend is donated Amazon credits, not LF's own money — so
+  `Amazon` is the funder recorded for every AWS-hosted row, never `LF`.
+  Likewise, **GitHub-hosted runners (on Azure) are funded by Meta only**;
+  LF has no current involvement in that spend. As a result `LF` does not
+  appear as a `funded_by` value anywhere in the file.
+- **XPU's Funded By is intentionally `Amazon, Meta, Intel` together, not
+  just `Intel`.** `redistribute_intel_jobs_to_xpu()` in `render.py` builds
+  most of the XPU bucket by carving job-name-regex-matched rows *out of*
+  LF's and Meta's own AWS totals — that capacity is AWS, funded by
+  Amazon (donated credits, for LF's portion) or Meta (for Meta's own
+  usage), not Intel hardware. A smaller portion is genuinely Intel-hosted
+  (`linux.client.xpu`, `linux.ril.xpu`, `linux.hpu.gaudi3.8`). Listing XPU
+  as "Funded By: Intel" alone would misattribute the bulk of it.
+- **CUDA's `Nvidia lab` location covers both the B200 DGX runners
+  (`linux.dgx.b200`) and the `rtx-40x0/50x0-*` RTX runners**, both funded
+  by Nvidia, not LF/Meta/AWS. Unlike the DGX mapping, the RTX one is
+  confirmed rather than inferred: `rtx-40x0-test`/`rtx-50x0-test` are the
+  runner labels used by
+  [`NVIDIA/pytorch-windows-ci`](https://github.com/NVIDIA/pytorch-windows-ci),
+  which runs out-of-tree Windows + RTX CI on NVIDIA's own self-hosted
+  runners, triggered from pytorch/pytorch via Cross-Repository CI Relay
+  (CRCR, RFC-0050). These are Windows jobs but land in the **CUDA**
+  architecture bucket (the translations table maps the RTX labels to
+  `CUDA`, not `Windows`) -- the OS pivot and the architecture pivot
+  disagreeing here is by design, not a bug.
+- A handful of values are recorded as `Unknown` rather than guessed
+  (`linux.gcp.*`/`gcp-h100-runner`'s funder, a `macOS` self-hosted label
+  group, and a few bare CUDA labels with no identifiable host at all --
+  `a100-runner`, `B200`, `a.linux.b200.2`) — resolve these with input from
+  whoever set up that capacity rather than inferring further from the
+  label text alone.
 
 ## Hosting
 
@@ -494,7 +598,17 @@ sheet) and now also has decided behavior:
   without hovering every bar segment, matching the legacy sheet's own
   table-plus-chart layout. The Runtime view's table carries a caption
   noting its figures are instance-hours, for the same reason as the
-  Runtime-view caveat note above the chart.
+  Runtime-view caveat note above the chart. The table also carries
+  **Location** and **Funded By** columns right after Architecture (blank in
+  the Total row), matching the monthly report's Combined architecture
+  table. These are fetched at runtime from
+  `architecture_sources.json` (copied alongside `trend_snapshot.json` by
+  `publish.py`) rather than folded into the snapshot itself or transcribed
+  into `index.html` as a third hand-copied duplicate of the mapping data —
+  see "Architecture sources: Location and Funded By" above. A missing file
+  or a missing architecture key (e.g. one from `collectExtraArchKeys()`
+  that the mapping table doesn't recognize at all) both degrade to "—"
+  rather than breaking the chart.
 - **Default view is a 12-month sliding window**, not all-time — supersedes
   an earlier decision to default to all-time, revised after the rendered
   chart got hard to read once enough months accumulated. A "Show all
