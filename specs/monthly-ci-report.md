@@ -38,10 +38,10 @@ possible **future addition**, not part of this spec's initial build — see
 
 **Build order**: get the finalize job + static site generation working and
 proven first — plain generated static output, not yet served through
-Cloudflare. Provisioning R2 and the Cloudflare Worker (and wiring
-Access/Auth0 in front of it) is a deliberately separate, later effort once
-the data pipeline and rendering are trusted. Don't block on hosting
-decisions to start building the pipeline.
+Cloudflare. Provisioning the Cloudflare Workers Static Assets deploy (and
+wiring Access/Auth0 in front of it) was a deliberately separate, later
+effort, done once the data pipeline and rendering were trusted; see
+"Hosting" below for what was built and why R2 wasn't needed.
 
 ## Data trust and caveats
 
@@ -186,13 +186,14 @@ so Trend's cross-month, cross-vendor aggregation doesn't silently mix units
 | Runner → vendor/architecture mapping | In-repo, committed (e.g. `ci_reports/mappings/`) — **not** `data/`, which is gitignored | Not secret; reviewable via normal PRs; see "Mapping coverage checks" below |
 | AMD per-runner GPU cost multiplier | In-repo, committed, alongside the vendor/architecture mapping | Revisited: originally scoped as confidential AMD-supplied data requiring restricted R2 storage; simplified to in-repo per explicit decision, since the resulting figures are already labeled `EstimatedCost` (not a real cost) site-wide — worth revisiting again if AMD ever objects to the raw multiplier itself being public, as distinct from the estimated dollar figures it produces |
 | Architecture → hosting location / funder | In-repo, committed, `ci_reports/mappings/architecture_sources.json`, alongside the other two mapping files | Not secret; provider/site names only (`AWS`, `GCP`, `AMD lab`), no internal datacenter or lab identifiers; see "Architecture sources: Location and Funded By" below |
-| Finalized monthly snapshots | R2 (once provisioned — see "Build order"), snapshot prefix, partitioned by `billing_period` and snapshot date | Contains PyTorch Foundation financial data; partitioned so re-finalizing never overwrites a prior point-in-time snapshot in place |
+| Finalized monthly snapshots | Deployed as part of the Workers Static Assets site (see "Hosting" below) | Contains PyTorch Foundation financial data; access is gated by Cloudflare Access, not bucket privacy — see Access control below |
 
-R2 is the working choice for object storage: private-by-default posture, no
-egress fees, and an S3-compatible API for the finalize job's own write path
-(a direct API token, unrelated to any SSO concern below). Per "Build
-order" above, this is deliberately deferred until the pipeline is proven
-with plain static output first.
+R2 was the earlier working choice for object storage (private-by-default
+posture, no egress fees, an S3-compatible API for the finalize job's own
+write path) but is not used in v1 — see "Hosting" below for why Workers
+Static Assets was chosen instead. Per "Build order" above, hosting was
+deliberately deferred until the pipeline was proven with plain static
+output first.
 
 ## Mapping coverage checks
 
@@ -456,13 +457,21 @@ surface as a coverage gap first.
 
 ## Hosting
 
-**Cloudflare Workers + R2** is the working direction, and fits the v1
-finalized-only scope well: the Worker serves pre-computed snapshot files
-(JSON/HTML) straight out of R2 via a native binding — no request-time
-compute, free egress, and the finalize job (which needs Python/duckdb for
-FOCUS Parquet, not runnable inside a V8 isolate) stays an external job
-(e.g. GitHub Actions, tying into the OIDC-role follow-up in `TODO.md`) that
-writes finished snapshots into R2 for the Worker to read.
+**Cloudflare Workers Static Assets** is the working direction. This
+supersedes the earlier "Workers + R2" direction recorded in prior versions
+of this section: at the site's actual size (a self-contained static
+directory, well under a megabyte), a separate object store, an API token
+for it, and a bucket-privacy control (see Access control below) add
+operational surface without buying anything — Workers Static Assets
+deploys the directory the finalize job already produces, with no Worker
+script and no bucket. R2 remains an option worth revisiting if the site
+grows a genuine need to update data independently of a code deploy, or for
+"Future addition: real-time MTD" below.
+
+The finalize job (which needs Python/duckdb for FOCUS Parquet, not
+runnable inside a V8 isolate) stays an external job (e.g. GitHub Actions,
+tying into the OIDC-role follow-up in `TODO.md`) that produces the site
+directory for a deploy to pick up.
 
 **Finalize trigger**: a monthly-scheduled **GitHub Actions workflow**
 (`cron`), not a Cloudflare Worker/Cron Trigger — Cron Triggers only invoke
@@ -470,14 +479,18 @@ Workers, which can't run the Python/duckdb finalize job either, so that
 would just add indirection without solving the runtime problem. The
 workflow authenticates to AWS via an OIDC role to read ClickHouse/FOCUS
 (the same OIDC-role need already flagged in `TODO.md`'s follow-ups), runs
-the finalize job, then writes the resulting snapshot into R2 via a separate
-R2 API token over its S3-compatible API — unrelated to the AWS OIDC auth,
-and unrelated to any SSO concern (same non-SSO write path already noted
-under Access control below).
+the finalize job, then deploys the resulting site via a separate
+Cloudflare API token — unrelated to the AWS OIDC auth, and unrelated to
+any SSO concern (same non-SSO write path already noted under Access
+control below). Deferred to a later phase; see "Build order" above — v1's
+first deploy is a manual, laptop-run `make deploy`.
 
-Cloudflare Access can gate the Worker/Pages route behind Auth0 (see Access
-control below), matching the `lf-fyi-shortener` pattern already in use
-elsewhere.
+Cloudflare Access gates the route behind Auth0 (see Access control below),
+via the Auth0 client already registered for this Cloudflare Zero Trust
+team (`linuxfoundation/auth0-terraform`'s `pytorch_cloudflare` client) —
+not the `lf-fyi-shortener` pattern, which handles its own OIDC login
+in-Worker rather than using Cloudflare Access at all; an earlier version of
+this section named that pattern by mistake.
 
 ### Future addition: real-time MTD
 
@@ -499,15 +512,21 @@ different mechanisms rather than one uniform live path:
 
 Two separate controls, not to be conflated:
 
-1. **Bucket privacy**: the R2 bucket (once provisioned, per "Build order")
-   must not allow public access. Risk to guard against is *accidental*
-   exposure — e.g. leaving R2's `r2.dev` dev URL enabled, or a custom
-   domain with no Access policy in front of it — not a targeted attack.
-2. **Website/report access**: gated by LFID SSO, via **Auth0**, following
-   the same pattern already in use for `linuxfoundation/lf-fyi-shortener`.
-   This is unrelated to the finalize job's own write path, which
-   authenticates to R2's S3-compatible API via a token and never goes
-   through SSO.
+1. **No unprotected route to the deployed site.** Risk to guard against is
+   *accidental* exposure, not a targeted attack — e.g. a `*.workers.dev`
+   URL or a per-version preview URL left reachable, or a custom domain
+   attached with no Access policy in front of it yet. `wrangler.jsonc` sets
+   `workers_dev: false` and `preview_urls: false` so the custom domain,
+   which always sits behind Access, is the only route in. (This is the
+   Workers Static Assets analogue of the accidental-`r2.dev`-exposure risk
+   an earlier R2-based version of this section warned about — see
+   "Hosting" above for why R2 isn't used in v1.)
+2. **Website/report access**: gated by LFID SSO, via **Auth0**, using the
+   Auth0 client already registered for this Cloudflare Zero Trust team
+   (`linuxfoundation/auth0-terraform`'s `pytorch_cloudflare` client) as the
+   Access application's identity provider. This is unrelated to the
+   deploy's own write path, which authenticates to Cloudflare's API via a
+   token and never goes through SSO.
 
 **Audience scope — resolved**: this is not LF-staff-only. The intended
 audience is the broader PyTorch community/Foundation stakeholders (board,

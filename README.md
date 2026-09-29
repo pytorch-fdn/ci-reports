@@ -239,6 +239,40 @@ prek run --all-files   # run manually against everything
 See `.pre-commit-config.yaml` for the hook list and `.editorconfig` for the
 whitespace/line-ending rules editors should follow automatically.
 
+## Deploying
+
+`make publish` assembles the site into `data/site/` (see `ci_reports/publish.py`).
+`make deploy` runs that, then deploys it with
+[`wrangler`](https://developers.cloudflare.com/workers/wrangler/) to
+Cloudflare Workers Static Assets, per `wrangler.jsonc` and
+`specs/monthly-ci-report.md`'s "Hosting" section:
+
+```
+export CLOUDFLARE_ACCOUNT_ID=...
+export CLOUDFLARE_API_TOKEN=...
+make deploy
+```
+
+Requires `npx` (Node.js) and `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN`
+exported in your shell beforehand (the token scoped to Workers Scripts:Edit
+on the account and Workers Routes/DNS on the target zone). Unlike
+`FOCUS_BUCKET`/`CH_*` above, `make deploy` does not fetch these from
+1Password itself — it only checks that both are already set and fails
+with a clear message otherwise. Keep them wherever you keep the rest of
+your Cloudflare credentials; neither is committed anywhere in this public
+repo.
+
+The route is a custom domain only — `wrangler.jsonc` disables the
+`*.workers.dev` URL and per-version preview URLs — and must sit behind a
+Cloudflare Access application (Auth0 as the identity provider) *before*
+the domain is attached, so the site is never reachable unauthenticated.
+The Access policy and allowlist are maintained in the Cloudflare dashboard,
+not in this repo (they're not app config; see "Access control" in the
+spec).
+
+To roll back a bad deploy: `npx wrangler rollback` (with the same
+`CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` env vars set).
+
 ## A note on Drive
 
 Any evaluation sheet published from this data to the Monthly CI Reports Drive

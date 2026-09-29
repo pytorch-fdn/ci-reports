@@ -1,0 +1,23 @@
+// SPDX-FileCopyrightText: 2026 The Linux Foundation
+//
+// SPDX-License-Identifier: Apache-2.0
+{
+  "name": "ci-reports",
+  "compatibility_date": "2026-09-01",
+  // Serves data/site/ (built by `make publish`) as-is -- no Worker script,
+  // just static assets. See specs/monthly-ci-report.md's "Hosting" section.
+  "assets": {
+    "directory": "./data/site",
+    "not_found_handling": "404-page"
+  },
+  // No public *.workers.dev URL or per-version preview URLs -- the only
+  // way in must be the custom domain below, behind Cloudflare Access.
+  "workers_dev": false,
+  "preview_urls": false,
+  // pytorch.org is an Active zone in this account (registrar is DNSimple,
+  // but Cloudflare's nameservers are authoritative for DNS), so a Workers
+  // custom domain attaches here without any separate DNS record.
+  "routes": [
+    { "pattern": "ci-reports.pytorch.org", "custom_domain": true }
+  ]
+}

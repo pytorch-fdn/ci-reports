@@ -5,7 +5,7 @@
 YEAR_MONTH ?= 2026-07
 OP_ACCOUNT ?= pytorch.1password.com
 
-.PHONY: help sync focus clickhouse render report sheet-import snapshot publish serve test lint clean
+.PHONY: help sync focus clickhouse render report sheet-import snapshot publish serve deploy test lint clean
 
 help:
 	@echo "Targets (override with e.g. make report YEAR_MONTH=2026-08):"
@@ -16,8 +16,9 @@ help:
 	@echo "  report       - focus + clickhouse + render, the full pipeline"
 	@echo "  sheet-import - backfill pre-FOCUS months from data/ternary/*.csv"
 	@echo "  snapshot     - build/update data/trend_snapshot.json across all extracted months"
-	@echo "  publish      - assemble the Cloudflare-Pages-ready site into data/site/"
+	@echo "  publish      - assemble the Workers-Static-Assets-ready site into data/site/"
 	@echo "  serve        - serve data/site/ locally at http://localhost:8123"
+	@echo "  deploy       - publish + wrangler deploy (Cloudflare Workers Static Assets)"
 	@echo "  test         - run the offline synthetic-fixture test scripts"
 	@echo "  lint         - run prek (pre-commit) against all files"
 	@echo "  clean        - remove data/<YEAR_MONTH> (does not touch other months)"
@@ -58,6 +59,13 @@ publish: snapshot
 
 serve:
 	cd data/site && python3 -m http.server 8123
+
+deploy: publish
+	@if [ -z "$(CLOUDFLARE_ACCOUNT_ID)" ] || [ -z "$(CLOUDFLARE_API_TOKEN)" ]; then \
+		echo "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN must both be exported first" >&2; \
+		exit 1; \
+	fi
+	npx --yes wrangler@4 deploy
 
 test:
 	uv run python tests/test_focus_extract.py
