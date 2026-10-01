@@ -674,6 +674,93 @@ sheet) and now also has decided behavior:
   "HUD's dashboard exports," or similar internal-only terms; that context
   belongs in this spec and in code comments, not in reader-facing copy.
 
+## CI Metrics tab
+
+A third tab, **CI Metrics**, sits next to Financials and Runtime on both the
+trend page and each monthly report. It answers *what is contributing to the
+increase in CI cost/runtime*: more work (PRs, contributors, jobs), more CI per
+unit of work (hours or jobs per PR), outcomes and reruns (failed, cancelled and rerun jobs),
+or a shift in mix (workflow, repo, trigger). The trend page shows the same
+12-month window / "Show all history" as the other tabs; the monthly report
+shows one month against the prior month. `#ci-metrics` on the trend page and
+`?view=ci-metrics` on a monthly report select the tab directly.
+
+**Sources** (all ClickHouse, `ReplacingMergeTree`, so every query uses
+`FINAL` and the same UTC half-open month bound as the Runtime extract):
+
+- `default.pull_request`: PRs opened/merged and distinct authors per repo.
+  "Merged" is PRs opened in the month that were merged as of capture, so a
+  month captured soon after it closes can show fewer merges than one
+  captured later (months are immutable once snapshotted).
+  `created_at` is a String there, so it is parsed before the month bound.
+- `default.workflow_job`: jobs, runs, reruns (`run_attempt > 1`) and
+  job-hours per repo and trigger event.
+- `misc.runner_cost`: runtime hours per repo, workflow and job outcome. It
+  starts a couple of months after the oldest report month; earlier months
+  show **no hours** (null, drawn as a gap), never zero.
+
+**Definitions.**
+
+- *Contributors* are distinct PR authors, deduplicated across repos. Bots are
+  excluded by `user.type = 'Bot'` plus a denylist of automation accounts that
+  appear as ordinary users (`BOT_LOGINS` in `ci_metrics_extract.py`).
+- *Aligned repos*: the default scope uses only repos present in every source
+  that has rows for the month, so a ratio like hours-per-PR divides numbers
+  describing the same repos. A source with no rows for the month (e.g.
+  runtime before it begins) drops out of the intersection instead of emptying
+  it. The page states the aligned repo count. Runtime from non-aligned repos
+  appears only as an "Other repos" bar in the repo mix. A `pytorch/pytorch`
+  filter narrows scope further, on both the trend page and the monthly
+  report's tab (a "Repos" selector; `?scope=pytorch/pytorch` preselects it on
+  the monthly report, whose "See this trend" link carries the selected scope and the month as
+  `#ci-metrics?scope=<repo>&month=<YYYY-MM>`; the trend page selects that
+  month, widening to all history if it is older than the 12-month window). This supersedes an earlier decision to offer the
+  filter on the trend page only. The per-repo runtime table is not split by
+  the filter, so the monthly report shows it only for all aligned repos.
+  Because the aligned set shifts month to month (a repo enters or leaves
+  one source's data), PR and contributor counts can move partly from scope
+  change rather than activity; the growth chart indexes every series to one
+  shared base month, and the appendix table shows a "Repos in scope" row.
+- The trend page's "Outcomes & reruns" section (renamed from "Waste", which
+  read as a judgment on the work) charts hours by outcome (with a "Hide success" checkbox to
+  show only failed, cancelled, skipped and other hours) and the rerun
+  rate. Conclusions `timed_out` and `startup_failure` count as failed; any other
+  unrecognized conclusion goes to an explicit *other* bucket rather than
+  being folded into skipped. *Failed + cancelled share* is failed + cancelled share of runtime hours; *rerun share* is
+  rerun job-hours over job-hours.
+- *Top movers* rank workflows by hours added versus the prior month. Only the
+  top 100 workflows per scope per month are stored (the rest are summed as
+  "other"), so a workflow that ranked below the cutoff last month can read as
+  NEW.
+
+**Chart interaction.** On all three trend-page tabs each month is a whole
+column hit area: hovering anywhere in the column highlights it and shows a
+tooltip (the stacked segment under the pointer, or every series for line
+charts); clicking anywhere in it selects the month (CI Metrics) or opens that
+month's report (Financials, Runtime). This supersedes click targets limited to
+the bar segment or point itself.
+
+**Hours, not dollars.** `runner_cost` records AMD cost as 0 and the FOCUS
+billing export has no workflow dimension, so a per-workflow dollar view
+could not reconcile with the Financials total. Hours are the one unit
+comparable across owning accounts. They describe CI job records and will not
+equal the Runtime tab's billed instance-hours. Trigger hours are summed from
+job start/end timestamps (jobs without a valid pair are ignored), so they are
+a little below the runtime-hour totals; the pages say so.
+
+**Storage.** `data/ci_metrics_snapshot.json` is a sibling of
+`trend_snapshot.json` (so neither schema churns the other), written by
+`ci_reports/ci_metrics.py` with the same rules: each month captured once and
+immutable, `schema_version` backfill, `--force` to recompute. The trend page
+fetches it lazily on first opening the tab and shows "CI metrics not yet
+published" if it is absent. `publish.py` copies it next to the trend
+snapshot. Aggregation (`aggregate_month`) is a pure function covered by
+synthetic-fixture tests in `tests/test_ci_metrics.py`.
+
+**Not in v1.** Queue time and fleet size (`misc.queue_times_24h_stats`,
+`misc.runner_fleet_count`) and pre-aggregated external-contributor counts
+(`misc.external_contribution_stats`) are possible later additions.
+
 ## Public-repo constraints
 
 This file is committed and this repo is public. Per `AGENTS.md`: no real

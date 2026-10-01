@@ -188,9 +188,19 @@ CH_PASS=$(op read "op://Engineering/ci-reports-config/CH_PASS" \
   --account pytorch.1password.com) \
   uv run python -m ci_reports.clickhouse_extract 2026-07
 
-# 3. Render the combined static HTML report
+# 3. CI Metrics slices (PRs, jobs, runtime by workflow; same CH_* vars as
+#    step 2), then fold all extracted months into the CI Metrics snapshot
+uv run python -m ci_reports.ci_metrics_extract 2026-07   # accepts several months
+uv run python -m ci_reports.ci_metrics                   # --force to recompute
+
+# 4. Render the combined static HTML report
 uv run python -m ci_reports.render 2026-07
 ```
+
+Step 3 feeds the **CI Metrics** tab (`make ci-metrics` / `make
+ci-metrics-snapshot`); `make publish` builds the snapshots, re-renders every month's report (so the
+monthly CI Metrics tab matches the snapshot), and copies
+`data/ci_metrics_snapshot.json` next to the trend snapshot. Without it the tab says it isn't published yet.
 
 `CH_HOST`, `CH_USER`, and `CH_PASS` are all required and deliberately not
 committed anywhere in this public repo, same rule as `FOCUS_BUCKET` above.
@@ -199,7 +209,7 @@ Set `EXPORT_TZ` (e.g.
 export's timezone-dependent date math for comparison — leave it unset for
 normal runs, which use UTC month boundaries.
 
-Step 3 reads the outputs of steps 1 and 2 plus the committed lookup tables in
+Step 4 reads the outputs of steps 1 to 3 plus the committed lookup tables in
 `ci_reports/mappings/` (vendor/architecture mapping and AMD GPU-label
 multipliers). A runner type or instance family not covered by those tables
 never blocks the report — its cost, when known, is bucketed under an
@@ -219,6 +229,7 @@ Output lands in `data/<YYYY-MM>/report.html`; open it directly in a browser.
 ```
 uv run python tests/test_focus_extract.py  # synthetic duckdb fixture
 uv run python tests/test_amd_cost.py       # synthetic AMD multiplier fixture
+uv run python tests/test_ci_metrics.py     # synthetic CI Metrics aggregation fixture
 ```
 
 (`pytest` is not currently a dependency; the test file also runs directly.)

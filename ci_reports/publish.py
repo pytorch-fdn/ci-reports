@@ -47,6 +47,19 @@ def publish():
         SITE_BUILD / "architecture_sources.json",
     )
 
+    # The CI Metrics tab's data, fetched lazily by the trend page the first
+    # time that tab opens. Optional: without it the tab shows "not yet
+    # published" instead of failing the whole publish.
+    ci_metrics_path = DATA_ROOT / "ci_metrics_snapshot.json"
+    if ci_metrics_path.exists():
+        shutil.copy(ci_metrics_path, SITE_BUILD / "ci_metrics_snapshot.json")
+    else:
+        print(
+            "data/ci_metrics_snapshot.json not found -- CI Metrics tab will "
+            "show as unpublished (run `make ci-metrics-snapshot`)",
+            file=sys.stderr,
+        )
+
     import json
 
     with open(snapshot_path) as f:

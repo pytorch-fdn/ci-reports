@@ -30,16 +30,32 @@
   table.data-table tr.total td { font-weight: bold; border-top: 2px solid #333; }
   table.data-table thead th { background: #f4f4f4; }
   table.data-table caption { text-align: left; font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; caption-side: top; }
+  .kpi-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }
+  .kpi { flex: 1 1 150px; border: 1px solid #ccc; border-radius: 4px; padding: 0.6rem 0.8rem; }
+  .kpi-label { font-size: 0.8rem; color: #666; }
+  .kpi-value { font-size: 1.5rem; font-weight: 600; }
+  .kpi-delta { font-size: 0.8rem; color: #555; }
+  .ci-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 0.5rem; font-size: 0.9rem; }
+  svg.ci-chart { width: 100%; height: 260px; }
+  svg.ci-small { width: 100%; height: 150px; }
+  .ci-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .ci-grid h4 { margin: 0 0 0.25rem; font-size: 0.85rem; }
+  table.mov { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  table.mov th, table.mov td { border-bottom: 1px solid #ddd; padding: 0.3rem 0.5rem; text-align: right; white-space: nowrap; }
+  table.mov th:nth-child(-n+2), table.mov td:nth-child(-n+2) { text-align: left; white-space: normal; }
+  table.mov thead th { background: #f4f4f4; }
+  table.ci-table th:nth-child(n+2), table.ci-table td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+  .tag-new { background: #4a3aa7; color: #fff; font-size: 0.7rem; padding: 0 0.35rem; border-radius: 3px; }
   #tooltip {
     position: absolute; display: none; background: #333; color: white;
-    padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.85rem; pointer-events: none;
+    padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.85rem; pointer-events: none; white-space: pre-line;
   }
 </style>
 </head>
 <body>
 <h1>PyTorch Foundation CI Reports</h1>
-<p>Combined total (all owning accounts: LF, Meta, AMD) per month. Click a
-bar or point to open that month's detailed report.
+<p>Combined total (all owning accounts: LF, Meta, AMD) per month. Hover a
+month to highlight it; on Financials and Runtime, click anywhere in its column to open that month's detailed report.
 <a href="mappings/index.html">View vendor/architecture mappings &amp; coverage gaps &rarr;</a></p>
 
 <div class="banner">
@@ -59,12 +75,89 @@ bar or point to open that month's detailed report.
 <div class="toggle">
   <button id="btn-financials" class="active">Financials</button>
   <button id="btn-runtime">Runtime</button>
+  <button id="btn-ci-metrics">CI Metrics</button>
   <button id="btn-window" class="window-toggle">Show all history</button>
 </div>
 
+<div id="tooltip"></div>
+
+<div id="ci-view" style="display: none;">
+  <p id="ci-message" class="provenance-note" style="display: none;"></p>
+  <div id="ci-body">
+    <div class="ci-controls">
+      <label>Repos:
+        <select id="ci-scope">
+          <option value="aligned">All aligned repos</option>
+          <option value="pytorch/pytorch">pytorch/pytorch only</option>
+        </select>
+      </label>
+      <label>Month: <select id="ci-month"></select></label>
+      <span class="provenance-note" id="ci-caption"></span>
+    </div>
+    <div class="kpi-row" id="ci-kpis"></div>
+
+    <h2>Growth vs. first month with all data in window (index = 100)</h2>
+    <svg id="ci-growth" class="ci-chart"></svg>
+    <div id="ci-growth-legend" class="legend"></div>
+    <p class="provenance-note">If runtime hours pull away from PRs and
+      contributors, cost growth is more CI per unit of work, not more work.
+      Click a month to select it for the tiles and table.
+      The set of repos in scope changes month to month (see "Repos in scope"
+      in the table below), which can move PR and contributor counts.</p>
+
+    <h2>Top movers: runtime by workflow, <span id="ci-mov-month"></span> vs. prior month</h2>
+    <div class="ci-controls">
+      <label>Sort by:
+        <select id="ci-sort">
+          <option value="delta_hours">Change in hours</option>
+          <option value="delta_pct">Change %</option>
+          <option value="share">Share of runtime</option>
+        </select>
+      </label>
+    </div>
+    <div class="data-table-wrap" style="margin-top: 0;"><table class="mov" id="ci-movers"></table></div>
+    <p class="provenance-note">Only each month's top 100 workflows are kept, so
+      a workflow that ranked below that cutoff last month can read as NEW.</p>
+
+    <h2>Outcomes &amp; reruns</h2>
+    <label class="ci-controls"><input type="checkbox" id="ci-hide-success"> Hide success (show failed, cancelled, skipped and other only)</label>
+    <svg id="ci-waste" class="ci-chart"></svg>
+    <div id="ci-waste-legend" class="legend"></div>
+    <svg id="ci-rate" class="ci-chart"></svg>
+    <div id="ci-rate-legend" class="legend"></div>
+    <p class="provenance-note">Failed + cancelled share is of runtime hours;
+      rerun share is of job-hours from job records (attempt &gt; 1).</p>
+
+    <h2>Mix</h2>
+    <h3>Job-hours by trigger</h3>
+    <svg id="ci-trigger" class="ci-chart"></svg>
+    <div id="ci-trigger-legend" class="legend"></div>
+    <p class="provenance-note">Trigger hours come from job start/end
+      timestamps, so they will not equal the runtime-hour totals above.</p>
+    <h3>Runtime hours by repo</h3>
+    <svg id="ci-repo" class="ci-chart"></svg>
+    <div id="ci-repo-legend" class="legend"></div>
+    <p class="provenance-note">Always covers every repo in the runtime data,
+      regardless of the repo filter above.</p>
+
+    <details id="ci-appendix" style="margin-top: 1.5rem;">
+      <summary>All metrics, month by month</summary>
+      <div class="ci-grid" id="ci-small"></div>
+      <div class="data-table-wrap"><table class="data-table ci-table" id="ci-table"></table></div>
+    </details>
+    <p class="provenance-note">Runtime is in hours, not dollars (AMD cost is
+      not recorded upstream and the billing export has no workflow
+      dimension), so these figures describe CI job records and will not equal
+      the Runtime tab's billed instance-hours. Counts and hours cover only
+      repos present in the PR, job and runtime data for that month. Months
+      before runtime data begins show no hours, not zero. Contributors are
+      distinct PR authors, bots excluded.</p>
+  </div>
+</div>
+
+<div id="arch-view">
 <svg id="chart"></svg>
 <div id="legend" class="legend"></div>
-<div id="tooltip"></div>
 <p id="runtime-note" class="provenance-note" style="display: none;">
   This breakdown covers instance-hours only -- usage billed in other units
   (data transfer, storage, requests, etc.) isn't attributable to an
@@ -81,6 +174,7 @@ bar or point to open that month's detailed report.
 
 <div class="data-table-wrap">
   <table class="data-table" id="data-table"></table>
+</div>
 </div>
 
 <script>
@@ -238,7 +332,7 @@ async function main() {
   }
   function hideTooltip() { tooltip.style.display = 'none'; }
 
-  function render() {
+  function renderArch() {
     const months = windowSize ? allMonths.slice(-windowSize) : allMonths;
     const W = svg.clientWidth || 900;
     const H = 400;
@@ -300,6 +394,7 @@ async function main() {
     ];
 
     const archesSeen = new Set();
+    const segs = [];
     months.forEach((m, i) => {
       const arch = snapshot[m][archKey] || {};
       const orderedArches = stackOrder.filter(a => arch[a] > 0);
@@ -322,21 +417,60 @@ async function main() {
           height: h,
           fill: colorFor(a),
         });
-        bar.addEventListener('click', () => {
-          const view = metric === 'financials_total' ? '' : '?view=runtime';
-          window.location.href = `reports/${m}/index.html${view}`;
-        });
-        bar.addEventListener('mousemove', (ev) => {
-          showTooltip(ev, `${m} -- ${a}: ${fmtValue(val)}`);
-        });
-        bar.addEventListener('mouseleave', hideTooltip);
+        bar.setAttribute('pointer-events', 'none');
+        (segs[i] = segs[i] || []).push({ top: barTop, bottom: barBottom, text: `${m} -- ${a}: ${fmtValue(val)}` });
         svg.appendChild(bar);
         cum += val;
       });
     });
+    addColumnHits(svg, months.length, x, slotW, padT, H - padT - padB, {
+      segs,
+      tip: i => `${months[i]} -- total: ${fmtValue(stackTotals[i])}`,
+      click: i => {
+        const view = metric === 'financials_total' ? '' : '?view=runtime';
+        window.location.href = `reports/${months[i]}/index.html${view}`;
+      },
+    });
     renderLegend(archesSeen);
     renderXLabels(months, x, H, padB);
     renderTable(months, archKey, stackOrder);
+  }
+
+  // Whole-column hit areas: a transparent rect per month spanning the plot
+  // height sits on top of the bars, so hovering anywhere in a month's column
+  // highlights it and clicking anywhere in it acts on that month -- no need
+  // to land exactly on a bar or dot. `segs[i]` optionally lists
+  // {top, bottom, text} bands (SVG y) so a stacked bar still reports the
+  // segment under the pointer; otherwise `tip(i)` text is used.
+  function addColumnHits(target, count, x, slotW, padT, plotH, handlers) {
+    const hl = [];
+    for (let i = 0; i < count; i++) {
+      hl.push(el('rect', {
+        x: x(i) - slotW / 2, y: padT, width: slotW, height: plotH,
+        fill: '#4285F4', opacity: 0, 'pointer-events': 'none',
+      }));
+      target.appendChild(hl[i]);
+    }
+    for (let i = 0; i < count; i++) {
+      const hit = el('rect', {
+        x: x(i) - slotW / 2, y: padT, width: slotW, height: plotH,
+        fill: 'transparent', style: 'cursor:pointer',
+      });
+      hit.addEventListener('mousemove', ev => {
+        hl.forEach((r, j) => r.setAttribute('opacity', j === i ? 0.12 : 0));
+        const pt = target.createSVGPoint();
+        pt.x = ev.clientX; pt.y = ev.clientY;
+        const sy = pt.matrixTransform(target.getScreenCTM().inverse()).y;
+        const seg = (handlers.segs && handlers.segs[i] || []).find(g => sy >= g.top && sy <= g.bottom);
+        showTooltip(ev, seg ? seg.text : handlers.tip(i));
+      });
+      hit.addEventListener('mouseleave', () => {
+        hl[i].setAttribute('opacity', 0);
+        hideTooltip();
+      });
+      hit.addEventListener('click', () => handlers.click(i));
+      target.appendChild(hit);
+    }
   }
 
   // Rounds a raw quarter-step up to a "nice" 1/2/2.5/5 x 10^n value, so the
@@ -357,22 +491,22 @@ async function main() {
     return `$${val.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
   }
 
-  function drawGridlines(y, maxV, step, W, H, padL, padR, padT, padB, fmt) {
+  function drawGridlines(y, maxV, step, W, H, padL, padR, padT, padB, fmt, target = svg) {
     for (let val = 0; val <= maxV + step / 2; val += step) {
       const gy = y(val);
-      svg.appendChild(el('line', {
+      target.appendChild(el('line', {
         x1: padL, y1: gy, x2: W - padR, y2: gy, class: 'gridline'
       }));
       const label = el('text', { x: padL - 8, y: gy + 3, class: 'y-axis-label' });
       label.textContent = fmt(val);
-      svg.appendChild(label);
+      target.appendChild(label);
     }
-    svg.appendChild(el('line', {
+    target.appendChild(el('line', {
       x1: padL, y1: padT, x2: padL, y2: H - padB, stroke: '#ccc'
     }));
   }
 
-  function renderXLabels(months, x, H, padB) {
+  function renderXLabels(months, x, H, padB, target = svg) {
     const labelEvery = Math.ceil(months.length / 15);
     months.forEach((m, i) => {
       if (i % labelEvery !== 0 && i !== months.length - 1) return;
@@ -382,7 +516,7 @@ async function main() {
         transform: `rotate(-55 ${tx} ${ty})`
       });
       label.textContent = m;
-      svg.appendChild(label);
+      target.appendChild(label);
     });
   }
 
@@ -491,25 +625,538 @@ async function main() {
     table.appendChild(tfoot);
   }
 
-  btnFin.addEventListener('click', () => {
-    metric = 'financials_total';
-    btnFin.classList.add('active');
-    btnRun.classList.remove('active');
-    render();
+  // ---- CI Metrics tab -------------------------------------------------
+  // Fed by ci_metrics_snapshot.json (see ci_reports/ci_metrics.py), fetched
+  // the first time the tab opens. Months without runtime data carry null
+  // hours, which every chart draws as a gap, never as zero.
+  const CI_OUTCOMES = ['success', 'failure', 'cancelled', 'skipped', 'other'];
+  const CI_OUTCOME_COLORS = { success: '#1baf7a', failure: '#e34948', cancelled: '#eda100', skipped: '#a8a69f', other: '#c9c7c0' };
+  const CI_TRIGGERS = ['pull_request', 'push', 'schedule', 'workflow_dispatch', 'other'];
+  const CI_TRIGGER_COLORS = { pull_request: '#2a78d6', push: '#1baf7a', schedule: '#eda100', workflow_dispatch: '#4a3aa7', other: '#a8a69f' };
+  const CI_REPO_COLORS = ['#2a78d6', '#1baf7a', '#eda100', '#e34948', '#4a3aa7', '#e87ba4'];
+  const CI_OTHER_ALIGNED = '#a8a69f';
+  const CI_NON_ALIGNED = '#c3c2b7';
+  const CI_MOVER_ROWS = 15;
+
+  let ciSnapshot = null;
+  let ciLoading = null;
+  let ciScope = 'aligned';
+  let ciMonth = null;
+  let ciSort = 'delta_hours';
+
+  function ciEnsureLoaded() {
+    if (!ciLoading) {
+      ciLoading = fetch('ci_metrics_snapshot.json')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(d => { ciSnapshot = d; })
+        .catch(() => { ciSnapshot = null; });
+    }
+    return ciLoading;
+  }
+
+  function shiftMonth(ym, delta) {
+    const [yr, mo] = ym.split('-').map(Number);
+    const t = yr * 12 + (mo - 1) + delta;
+    return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, '0')}`;
+  }
+
+  function fmtCompactNum(v) {
+    if (v === null || v === undefined) return '—';
+    const a = Math.abs(v);
+    if (a >= 1e6) return `${(v / 1e6).toLocaleString(undefined, {maximumFractionDigits: 1})}M`;
+    if (a >= 1e3) return `${(v / 1e3).toLocaleString(undefined, {maximumFractionDigits: 1})}K`;
+    return v.toLocaleString(undefined, {maximumFractionDigits: 1});
+  }
+  const fmtPct = v => (v === null || v === undefined) ? '—' : `${(v * 100).toFixed(1)}%`;
+  const fmtOne = v => (v === null || v === undefined) ? '—' : v.toFixed(1);
+  const fmtFull = v => (v === null || v === undefined) ? '—' : v.toLocaleString(undefined, {maximumFractionDigits: 2});
+
+  function scopeOf(m, scope = ciScope) {
+    const entry = ciSnapshot && ciSnapshot[m];
+    return entry ? entry.scopes[scope] : null;
+  }
+  function ciVal(m, key) {
+    const sc = scopeOf(m);
+    const v = sc ? sc[key] : null;
+    return v === undefined ? null : v;
+  }
+
+  function fmtDelta(cur, prev, points) {
+    if (cur === null || prev === null || cur === undefined || prev === undefined) return '—';
+    if (points) {
+      const d = (cur - prev) * 100;
+      return `${d > 0 ? '▲' : d < 0 ? '▼' : ''}${Math.abs(d).toFixed(1)} pts`;
+    }
+    if (prev === 0) return '—';
+    const d = (cur - prev) / prev * 100;
+    return `${d > 0.05 ? '▲' : d < -0.05 ? '▼' : ''}${Math.abs(d).toFixed(0)}%`;
+  }
+
+  // Generic chart over `months`. kind 'line' draws one polyline per series
+  // (broken at null months); 'stack' stacks series per month (a month whose
+  // series are all null draws nothing). Clicking a month selects it.
+  function ciChart(target, months, opts) {
+    const W = target.clientWidth || 900;
+    const H = opts.height || 260;
+    const padL = 70, padR = 20, padT = 14, padB = 60;
+    target.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    target.innerHTML = '';
+    const slotW = (W - padL - padR) / months.length;
+    const x = i => padL + (i + 0.5) * slotW;
+
+    let rawMax = 1;
+    months.forEach((m, i) => {
+      if (opts.kind === 'stack') {
+        const t = opts.series.reduce((a, s) => a + (s.values[i] || 0), 0);
+        rawMax = Math.max(rawMax, t);
+      } else {
+        opts.series.forEach(s => { if (s.values[i] !== null) rawMax = Math.max(rawMax, s.values[i]); });
+      }
+    });
+    const step = niceStep(rawMax / 4);
+    const maxV = Math.ceil(rawMax / step) * step;
+    const y = v => padT + (1 - v / maxV) * (H - padT - padB);
+
+    const sel = months.indexOf(ciMonth);
+    if (sel >= 0) {
+      target.appendChild(el('rect', {
+        x: x(sel) - slotW / 2, y: padT, width: slotW, height: H - padT - padB,
+        fill: '#4285F4', opacity: 0.08,
+      }));
+    }
+    drawGridlines(y, maxV, step, W, H, padL, padR, padT, padB, opts.fmt, target);
+
+    const select = (m) => { ciMonth = m; renderCi(); };
+    const segs = [];
+    if (opts.kind === 'stack') {
+      months.forEach((m, i) => {
+        if (opts.series.every(s => s.values[i] === null)) return;
+        const barW = Math.min(60, slotW * 0.6);
+        let cum = 0;
+        opts.series.forEach(s => {
+          const val = s.values[i] || 0;
+          if (val <= 0) return;
+          const top = y(cum + val), bottom = y(cum);
+          const rawH = Math.max(bottom - top, 0);
+          const bar = el('rect', {
+            class: 'bar', x: x(i) - barW / 2, y: top, width: barW,
+            height: rawH > 3 ? rawH - 2 : rawH, fill: s.color,
+          });
+          bar.setAttribute('pointer-events', 'none');
+          (segs[i] = segs[i] || []).push({ top, bottom, text: `${m} -- ${s.name}: ${opts.fmt(val)}` });
+          target.appendChild(bar);
+          cum += val;
+        });
+      });
+    } else {
+      opts.series.forEach(s => {
+        let d = '';
+        let pen = false;
+        months.forEach((m, i) => {
+          const v = s.values[i];
+          if (v === null) { pen = false; return; }
+          d += `${pen ? 'L' : 'M'}${x(i)},${y(v)} `;
+          pen = true;
+        });
+        target.appendChild(el('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2 }));
+        months.forEach((m, i) => {
+          const v = s.values[i];
+          if (v === null) return;
+          const dot = el('circle', { class: 'bar', cx: x(i), cy: y(v), r: 3.5, fill: s.color });
+          dot.setAttribute('pointer-events', 'none');
+          target.appendChild(dot);
+        });
+      });
+    }
+    addColumnHits(target, months.length, x, slotW, padT, H - padT - padB, {
+      segs,
+      tip: i => {
+        const lines = opts.series
+          .filter(s => s.values[i] !== null && s.values[i] !== undefined)
+          .map(s => `${s.name}: ${opts.fmt(s.values[i])}`);
+        return [months[i], ...lines].join('\n');
+      },
+      click: i => select(months[i]),
+    });
+    renderXLabels(months, x, H, padB, target);
+  }
+
+  function ciLegend(container, series) {
+    container.innerHTML = '';
+    const group = document.createElement('div');
+    group.className = 'legend-group';
+    series.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      const swatch = document.createElement('span');
+      swatch.className = 'legend-swatch';
+      swatch.style.background = s.color;
+      item.appendChild(swatch);
+      item.appendChild(textEl('span', s.name));
+      group.appendChild(item);
+    });
+    container.appendChild(group);
+  }
+
+  function ciKpis(months) {
+    const kpis = [
+      { key: 'prs_opened', label: 'PRs opened', fmt: fmtCompactNum },
+      { key: 'jobs', label: 'Jobs run', fmt: fmtCompactNum },
+      { key: 'contributors', label: 'Contributors', fmt: fmtCompactNum },
+      { key: 'hours', label: 'Runtime hours', fmt: fmtCompactNum },
+      { key: 'hours_per_pr', label: 'Hours / PR', fmt: fmtOne },
+      { key: 'waste_pct', label: 'Failed + cancelled hours', fmt: fmtPct, points: true },
+    ];
+    const box = document.getElementById('ci-kpis');
+    box.innerHTML = '';
+    const prev = shiftMonth(ciMonth, -1), yearAgo = shiftMonth(ciMonth, -12);
+    kpis.forEach(k => {
+      const cur = ciVal(ciMonth, k.key);
+      const tile = document.createElement('div');
+      tile.className = 'kpi';
+      tile.appendChild(Object.assign(textEl('div', k.label), { className: 'kpi-label' }));
+      tile.appendChild(Object.assign(textEl('div', k.fmt(cur)), { className: 'kpi-value' }));
+      tile.appendChild(Object.assign(
+        textEl('div', `${fmtDelta(cur, ciVal(prev, k.key), k.points)} MoM`), { className: 'kpi-delta' }));
+      tile.appendChild(Object.assign(
+        textEl('div', `${fmtDelta(cur, ciVal(yearAgo, k.key), k.points)} YoY`), { className: 'kpi-delta' }));
+      box.appendChild(tile);
+    });
+  }
+
+  function ciGrowth(months) {
+    const defs = [
+      { key: 'hours', name: 'Runtime hours', color: '#e34948' },
+      { key: 'jobs', name: 'Jobs', color: '#eda100' },
+      { key: 'prs_opened', name: 'PRs opened', color: '#2a78d6' },
+      { key: 'contributors', name: 'Contributors', color: '#1baf7a' },
+    ];
+    // One shared base month -- the first in the window where every series
+    // has data -- so the lines stay comparable; earlier months are gaps.
+    const baseIdx = months.findIndex(m => defs.every(d => { const v = ciVal(m, d.key); return v !== null && v > 0; }));
+    const series = defs.map(d => {
+      const raw = months.map(m => ciVal(m, d.key));
+      return {
+        name: d.name, color: d.color,
+        values: raw.map((v, i) => (baseIdx < 0 || i < baseIdx || v === null) ? null : v / raw[baseIdx] * 100),
+      };
+    });
+    ciChart(document.getElementById('ci-growth'), months, {
+      kind: 'line', series, fmt: v => v.toFixed(0),
+    });
+    ciLegend(document.getElementById('ci-growth-legend'), series);
+  }
+
+  function workflowKey(repo, name) { return `${repo}\u0000${name}`; }
+  function workflowHours(m) {
+    const sc = scopeOf(m);
+    if (!sc || !sc.workflows) return null;
+    return new Map(sc.workflows.map(([repo, name, hours]) => [workflowKey(repo, name), hours]));
+  }
+
+  function ciMovers(months) {
+    document.getElementById('ci-mov-month').textContent = ciMonth;
+    const table = document.getElementById('ci-movers');
+    table.innerHTML = '';
+    const cur = scopeOf(ciMonth);
+    if (!cur || !cur.workflows) {
+      const caption = textEl('caption', 'No runtime data for this month.');
+      table.appendChild(caption);
+      return;
+    }
+    const prevMap = workflowHours(shiftMonth(ciMonth, -1));
+    const total = cur.hours || 0;
+    const rows = cur.workflows.map(([repo, name, hours]) => {
+      const before = prevMap ? prevMap.get(workflowKey(repo, name)) : undefined;
+      return {
+        repo, name, hours,
+        isNew: !!prevMap && before === undefined,
+        deltaHours: prevMap ? hours - (before || 0) : null,
+        deltaPct: (before === undefined || before === 0) ? null : (hours - before) / before,
+        share: total ? hours / total : null,
+      };
+    });
+    const sortKey = r => {
+      if (ciSort === 'share') return r.share === null ? -Infinity : r.share;
+      if (ciSort === 'delta_pct') return r.isNew ? Infinity : (r.deltaPct === null ? -Infinity : r.deltaPct);
+      return r.deltaHours === null ? r.hours : r.deltaHours;
+    };
+    rows.sort((a, b) => sortKey(b) - sortKey(a));
+
+    const head = document.createElement('thead');
+    const hr = document.createElement('tr');
+    ['Workflow', 'Repo', 'Hours', 'Δ hours', 'Δ MoM', 'Share', 'Trend'].forEach(h => hr.appendChild(textEl('th', h)));
+    head.appendChild(hr);
+    table.appendChild(head);
+
+    const maps = months.map(m => workflowHours(m));
+    const body = document.createElement('tbody');
+    rows.slice(0, CI_MOVER_ROWS).forEach(r => {
+      const tr = document.createElement('tr');
+      tr.appendChild(textEl('td', r.name));
+      tr.appendChild(textEl('td', r.repo));
+      tr.appendChild(textEl('td', fmtCompactNum(r.hours)));
+      tr.appendChild(textEl('td', r.deltaHours === null ? '—' : `${r.deltaHours >= 0 ? '+' : '−'}${fmtCompactNum(Math.abs(r.deltaHours))}`));
+      const change = document.createElement('td');
+      if (r.isNew) {
+        const tag = textEl('span', 'NEW');
+        tag.className = 'tag-new';
+        change.appendChild(tag);
+      } else {
+        change.textContent = r.deltaPct === null ? '—' : `${r.deltaPct >= 0 ? '+' : '−'}${Math.abs(r.deltaPct * 100).toFixed(0)}%`;
+      }
+      tr.appendChild(change);
+      tr.appendChild(textEl('td', r.share === null ? '—' : `${(r.share * 100).toFixed(1)}%`));
+      const spark = document.createElement('td');
+      spark.appendChild(ciSpark(maps, workflowKey(r.repo, r.name)));
+      tr.appendChild(spark);
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+  }
+
+  // Tiny trend line of one workflow's hours across the window. A month with
+  // no runtime data at all is a gap; a month with data but without this
+  // workflow in its kept list is 0.
+  function ciSpark(maps, key) {
+    const w = 90, h = 22;
+    const s = el('svg', { width: w, height: h, viewBox: `0 0 ${w} ${h}` });
+    const vals = maps.map(m => m === null ? null : (m.get(key) || 0));
+    const max = Math.max(...vals.map(v => v || 0), 1);
+    let d = '', pen = false;
+    vals.forEach((v, i) => {
+      if (v === null) { pen = false; return; }
+      const px = vals.length === 1 ? w / 2 : i / (vals.length - 1) * (w - 2) + 1;
+      const py = h - 2 - v / max * (h - 4);
+      d += `${pen ? 'L' : 'M'}${px},${py} `;
+      pen = true;
+    });
+    s.appendChild(el('path', { d, fill: 'none', stroke: '#2a78d6', 'stroke-width': 1.5 }));
+    return s;
+  }
+
+  function ciWaste(months) {
+    const hideSuccess = document.getElementById('ci-hide-success').checked;
+    const outcome = CI_OUTCOMES.filter(o => !(hideSuccess && o === 'success')).map(o => ({
+      name: o, color: CI_OUTCOME_COLORS[o],
+      values: months.map(m => { const h = ciVal(m, 'hours_by_outcome'); return h ? h[o] : null; }),
+    }));
+    ciChart(document.getElementById('ci-waste'), months, {
+      kind: 'stack', series: outcome, fmt: fmtCompactNum, height: 260,
+    });
+    ciLegend(document.getElementById('ci-waste-legend'), outcome);
+
+    const rates = [
+      { name: 'Failed + cancelled share of hours', color: '#e34948', values: months.map(m => { const v = ciVal(m, 'waste_pct'); return v === null ? null : v * 100; }) },
+      { name: 'Rerun share of job-hours', color: '#eda100', values: months.map(m => { const v = ciVal(m, 'rerun_share'); return v === null ? null : v * 100; }) },
+    ];
+    ciChart(document.getElementById('ci-rate'), months, {
+      kind: 'line', series: rates, fmt: v => `${v.toFixed(0)}%`, height: 200,
+    });
+    ciLegend(document.getElementById('ci-rate-legend'), rates);
+  }
+
+  function ciMix(months) {
+    const trig = CI_TRIGGERS.map(t => ({
+      name: t, color: CI_TRIGGER_COLORS[t],
+      values: months.map(m => { const h = ciVal(m, 'hours_by_trigger'); return h ? (h[t] || 0) : null; }),
+    }));
+    ciChart(document.getElementById('ci-trigger'), months, {
+      kind: 'stack', series: trig, fmt: fmtCompactNum,
+    });
+    ciLegend(document.getElementById('ci-trigger-legend'), trig);
+
+    // Top 6 repos by the latest month in view that has runtime data; one
+    // fixed stack order across all bars, like the architecture chart.
+    const withRuntime = months.filter(m => ciSnapshot[m] && ciSnapshot[m].hours_by_repo);
+    const ranked = withRuntime.length
+      ? Object.entries(ciSnapshot[withRuntime[withRuntime.length - 1]].hours_by_repo)
+          .sort((a, b) => b[1] - a[1]).slice(0, CI_REPO_COLORS.length).map(e => e[0])
+      : [];
+    const repoSeries = ranked.map((repo, i) => ({
+      name: repo, color: CI_REPO_COLORS[i],
+      values: months.map(m => { const h = ciSnapshot[m] && ciSnapshot[m].hours_by_repo; return h ? (h[repo] || 0) : null; }),
+    }));
+    repoSeries.push({
+      name: 'Other aligned repos', color: CI_OTHER_ALIGNED,
+      values: months.map(m => {
+        const h = ciSnapshot[m] && ciSnapshot[m].hours_by_repo;
+        if (!h) return null;
+        return Object.entries(h).filter(([r]) => !ranked.includes(r)).reduce((a, [, v]) => a + v, 0);
+      }),
+    });
+    repoSeries.push({
+      name: 'Other repos (not in all sources)', color: CI_NON_ALIGNED,
+      values: months.map(m => { const e = ciSnapshot[m]; return e && e.hours_non_aligned !== null ? e.hours_non_aligned : null; }),
+    });
+    ciChart(document.getElementById('ci-repo'), months, {
+      kind: 'stack', series: repoSeries, fmt: fmtCompactNum,
+    });
+    ciLegend(document.getElementById('ci-repo-legend'), repoSeries);
+  }
+
+  const CI_APPENDIX = [
+    { key: 'repo_count', label: 'Repos in scope', fmt: fmtCompactNum },
+    { key: 'prs_opened', label: 'PRs opened', fmt: fmtCompactNum },
+    { key: 'prs_merged', label: 'PRs merged', fmt: fmtCompactNum },
+    { key: 'contributors', label: 'Contributors', fmt: fmtCompactNum },
+    { key: 'runs', label: 'Workflow runs', fmt: fmtCompactNum },
+    { key: 'jobs', label: 'Jobs', fmt: fmtCompactNum },
+    { key: 'hours', label: 'Runtime hours', fmt: fmtCompactNum },
+    { key: 'hours_per_pr', label: 'Hours / PR', fmt: fmtOne },
+    { key: 'jobs_per_pr', label: 'Jobs / PR', fmt: fmtOne },
+    { key: 'hours_per_job', label: 'Hours / job', fmt: v => v === null ? '—' : v.toFixed(3) },
+    { key: 'waste_pct', label: 'Failed + cancelled share', fmt: fmtPct, pct: true },
+    { key: 'rerun_share', label: 'Rerun share', fmt: fmtPct, pct: true },
+  ];
+
+  function ciAppendix(months) {
+    if (!document.getElementById('ci-appendix').open) return;
+    const grid = document.getElementById('ci-small');
+    grid.innerHTML = '';
+    CI_APPENDIX.forEach(metricDef => {
+      const cell = document.createElement('div');
+      cell.appendChild(textEl('h4', metricDef.label));
+      const s = el('svg', { class: 'ci-chart ci-small' });
+      cell.appendChild(s);
+      grid.appendChild(cell);
+      const values = months.map(m => {
+        const v = ciVal(m, metricDef.key);
+        return v === null ? null : (metricDef.pct ? v * 100 : v);
+      });
+      ciChart(s, months, {
+        kind: 'line', height: 150,
+        series: [{ name: metricDef.label, color: '#2a78d6', values }],
+        fmt: metricDef.pct ? v => `${v.toFixed(0)}%` : fmtCompactNum,
+      });
+    });
+
+    const table = document.getElementById('ci-table');
+    table.innerHTML = '';
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    hr.appendChild(textEl('th', 'Metric'));
+    months.forEach(m => hr.appendChild(textEl('th', m)));
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    CI_APPENDIX.forEach(metricDef => {
+      const tr = document.createElement('tr');
+      tr.appendChild(textEl('td', metricDef.label));
+      months.forEach(m => {
+        const v = ciVal(m, metricDef.key);
+        tr.appendChild(textEl('td', metricDef.pct ? fmtPct(v) : (metricDef.fmt === fmtOne ? fmtOne(v) : fmtFull(v))));
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+  }
+
+  function renderCi() {
+    const msg = document.getElementById('ci-message');
+    const body = document.getElementById('ci-body');
+    const ciMonths = ciSnapshot ? allMonths.filter(m => ciSnapshot[m]) : [];
+    if (!ciMonths.length) {
+      msg.style.display = 'block';
+      msg.textContent = 'CI metrics not yet published.';
+      body.style.display = 'none';
+      return;
+    }
+    msg.style.display = 'none';
+    body.style.display = '';
+
+    if (!ciMonth || !ciMonths.includes(ciMonth)) ciMonth = ciMonths[ciMonths.length - 1];
+    const monthSel = document.getElementById('ci-month');
+    if (monthSel.options.length !== ciMonths.length) {
+      monthSel.innerHTML = '';
+      ciMonths.slice().reverse().forEach(m => monthSel.appendChild(new Option(m, m)));
+    }
+    monthSel.value = ciMonth;
+
+    const months = windowSize ? ciMonths.slice(-windowSize) : ciMonths;
+    const sc = scopeOf(ciMonth);
+    document.getElementById('ci-caption').textContent =
+      ciScope === 'aligned'
+        ? `${sc ? sc.repo_count : 0} repos appear in all sources this month.`
+        : 'pytorch/pytorch only.';
+
+    ciKpis(months);
+    ciGrowth(months);
+    ciMovers(months);
+    ciWaste(months);
+    ciMix(months);
+    ciAppendix(months);
+  }
+
+  document.getElementById('ci-hide-success').addEventListener('change', renderCi);
+  document.getElementById('ci-scope').addEventListener('change', ev => { ciScope = ev.target.value; renderCi(); });
+  document.getElementById('ci-month').addEventListener('change', ev => {
+    ciMonth = ev.target.value;
+    // Same widening as following a #ci-metrics?month= link: an older month
+    // outside the 12-month window would otherwise have no chart highlight.
+    if (windowSize && !allMonths.slice(-windowSize).includes(ciMonth)) {
+      windowSize = null;
+      btnWindow.textContent = 'Show last 12 months';
+    }
+    renderCi();
   });
-  btnRun.addEventListener('click', () => {
-    metric = 'runtime_total';
-    btnRun.classList.add('active');
-    btnFin.classList.remove('active');
-    render();
-  });
+  document.getElementById('ci-sort').addEventListener('change', ev => { ciSort = ev.target.value; renderCi(); });
+  document.getElementById('ci-appendix').addEventListener('toggle', () => { if (metric === 'ci') renderCi(); });
+
+  const archView = document.getElementById('arch-view');
+  const ciView = document.getElementById('ci-view');
+  const btnCi = document.getElementById('btn-ci-metrics');
+
+  function render() {
+    if (metric === 'ci') renderCi(); else renderArch();
+  }
+
+  function setTab(tab) {
+    metric = tab;
+    btnFin.classList.toggle('active', tab === 'financials_total');
+    btnRun.classList.toggle('active', tab === 'runtime_total');
+    btnCi.classList.toggle('active', tab === 'ci');
+    archView.style.display = tab === 'ci' ? 'none' : '';
+    ciView.style.display = tab === 'ci' ? '' : 'none';
+    if (tab === 'ci') ciEnsureLoaded().then(render); else render();
+  }
+
+  btnFin.addEventListener('click', () => setTab('financials_total'));
+  btnRun.addEventListener('click', () => setTab('runtime_total'));
+  btnCi.addEventListener('click', () => setTab('ci'));
+
   btnWindow.addEventListener('click', () => {
     windowSize = windowSize ? null : 12;
     btnWindow.textContent = windowSize ? 'Show all history' : 'Show last 12 months';
     render();
   });
 
-  render();
+  // '#ci-metrics' or  (the monthly report's link
+  // carries its selected repo scope).
+  const hashMatch = window.location.hash.match(/^#ci-metrics(?:\?(.*))?$/);
+  if (hashMatch) {
+    const hashParams = new URLSearchParams(hashMatch[1] || '');
+    const wanted = hashParams.get('scope');
+    // A month the page doesn't have is ignored (renderCi falls back to the
+    // latest). One older than the 12-month window widens to all history so
+    // the selected month is visible on the charts.
+    const wantedMonth = hashParams.get('month');
+    if (wantedMonth && allMonths.includes(wantedMonth)) {
+      ciMonth = wantedMonth;
+      if (windowSize && !allMonths.slice(-windowSize).includes(wantedMonth)) {
+        windowSize = null;
+        btnWindow.textContent = 'Show last 12 months';
+      }
+    }
+    const scopeSelect = document.getElementById('ci-scope');
+    if (wanted && Array.from(scopeSelect.options).some(o => o.value === wanted)) {
+      ciScope = wanted;
+      scopeSelect.value = wanted;
+    }
+    setTab('ci');
+  } else {
+    render();
+  }
   window.addEventListener('resize', render);
 }
 
