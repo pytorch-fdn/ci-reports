@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Assembles the Cloudflare Pages deploy directory: the committable site
-shell (ci_reports/site/) plus the generated, gitignored data (trend
-snapshot + one rendered report per month) it reads at runtime.
+"""Assembles the Cloudflare Workers Static Assets deploy directory: the
+committable site shell (ci_reports/site/) plus the generated, gitignored
+data (trend snapshot + one rendered report per month) it reads at runtime.
 
 Kept as a separate build step rather than writing straight into
 ci_reports/site/ so the shell's own source never gets mixed with generated
