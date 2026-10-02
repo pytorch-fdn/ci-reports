@@ -549,14 +549,28 @@ the community a snapshot to review" goal.
 
 **Access model — resolved: binary, no tiers.** Auth0/LFID handles
 *authentication* only (who is this?); it should not be relied on for
-*authorization* (are they allowed in?) — the shared LFID Auth0 tenant isn't
-expected to expose group/org-membership claims to this app. Authorization
-is enforced one layer up, as **Cloudflare Access policy rules**:
+*authorization* (are they allowed in?) — the `pytorch_cloudflare` client
+receives no group/org-membership claims. Authorization is enforced one
+layer up, as **Cloudflare Access policy rules**:
 
 - LF staff get access for free via an email-domain rule (e.g. `@linuxfoundation.org`) —
   no per-person maintenance.
-- Everyone else (board/TAC/member-company representatives) is covered by
-  an explicit allowlist of individual emails.
+- Everyone else (board/TAC/member-company representatives) is a second
+  Allow policy. To keep it short, most people are covered by an email rule
+  (member-company domains or exact emails), since most use company
+  addresses. The exception is people who work with us from a personal
+  address: they are listed by **LFID username**, matched with Access's OIDC
+  Claim selector against the `https://sso.linuxfoundation.org/claims/username`
+  claim. Never add a rule for a shared domain such as `gmail.com`. A domain
+  rule admits everyone with a verified LFID on that domain, not only the
+  intended representatives. The username claim is added to every LFID
+  login's ID token regardless of client, so no Auth0-side change is needed;
+  it only has to be listed under the identity provider's **OIDC Claims**
+  field in Cloudflare. Usernames are preferred over exact emails when a
+  person needs an individual entry, because LFID users can change their
+  primary email while the username is stable. Unverified-email accounts
+  cannot log in to this client, so both claims are trustworthy. Claims
+  refresh only when the user re-authenticates.
 
 The explicit allowlist must **not** live in this public repo — it's a list
 of real people's identities/affiliations, not app config, and doesn't
