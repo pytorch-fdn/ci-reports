@@ -14,7 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from ci_reports.amd_cost import compute_amd_cost, count_gpus, match_gpu_label
+from ci_reports.amd_cost import (
+    compute_amd_cost,
+    count_gpus,
+    load_gpu_label_mappings,
+    match_gpu_label,
+)
 
 SYNTHETIC_MAPPINGS = [
     {"label": "widget9000", "gpu": "Synthetic Widget 9000", "multiplier": 2.0},
@@ -57,6 +62,39 @@ def test_unmapped_runner_returns_none_instead_of_guessing():
     assert compute_amd_cost("some-totally-unknown-runner", 1.0, SYNTHETIC_MAPPINGS) is None
 
 
+def test_generic_rocm_label_does_not_shadow_a_model_label():
+    # "rocm" is listed BEFORE the model labels here on purpose: file order
+    # must not decide the price.
+    mappings = [
+        {"label": "rocm", "gpu": "generic", "multiplier": 1.0},
+        {"label": "mi350", "gpu": "MI350", "multiplier": 2.25},
+        {"label": "mi300", "gpu": "MI300", "multiplier": 1.5},
+        {"label": "rx7900", "gpu": "RX 7900", "multiplier": 0.5},
+    ]
+    for runner, gpu in [
+        ("linux.rocm.gpu.mi350.dpx.1", "MI350"),
+        ("linux.rocm.gpu.mi300.4", "MI300"),
+        ("linux.rocm.gpu.rx7900.1", "RX 7900"),
+    ]:
+        assert match_gpu_label(runner, mappings)["gpu"] == gpu, runner
+    assert match_gpu_label("linux.rocm.gpu.unknownmodel.1", mappings)["gpu"] == "generic"
+
+
+def test_shipped_mappings_price_known_models_specifically():
+    mappings = load_gpu_label_mappings(
+        Path(__file__).resolve().parent.parent / "ci_reports" / "mappings" / "gpu_label_mappings.json"
+    )
+    for runner, model in [
+        ("linux.rocm.gpu.mi350.1", "MI350"),
+        ("amd-sandbox-linux.rocm.gpu.mi350.2", "MI350"),
+        ("linux.rocm.gpu.mi355.2", "MI355"),
+        ("linux.rocm.gpu.mi300.4", "MI300"),
+        ("linux.rocm.gpu.rx7900.1", "Radeon RX 7900 XT"),
+        ("linux.rocm.gpu.mi210.1", "MI210/MI250"),
+    ]:
+        assert match_gpu_label(runner, mappings)["gpu"] == model, runner
+
+
 def test_count_gpus_helper_directly():
     assert count_gpus("linux.rocm.gpu.widget9000.4", "widget9000") == 4
     assert count_gpus("linux.rocm.gpu.widget9000", "widget9000") == 1
@@ -68,5 +106,7 @@ if __name__ == "__main__":
     test_no_trailing_count_defaults_to_one_gpu()
     test_trailing_non_numeric_suffix_does_not_break_count()
     test_unmapped_runner_returns_none_instead_of_guessing()
+    test_generic_rocm_label_does_not_shadow_a_model_label()
+    test_shipped_mappings_price_known_models_specifically()
     test_count_gpus_helper_directly()
     print("OK")

@@ -20,8 +20,11 @@ figure this module produces as an estimate for cross-vendor comparison, not
 an actual, auditable dollar cost.
 
 Model/multiplier lookup is substring matching against `runner_type`, same as
-the sheet: specific labels are tried before the generic "linux.rocm.gpu"
-prefix, so a more specific label never gets shadowed by the catch-all.
+the sheet: specific labels are tried before the generic ROCm labels
+(GENERIC_LABELS), so a more specific label never gets shadowed by a generic
+one. Order within the mapping file therefore does not matter for those --
+e.g. "linux.rocm.gpu.mi350.1" contains the generic "rocm" and the specific
+"mi350", and must be priced as an MI350.
 
 This substring rule is not guaranteed to cover every runner_type that will
 ever appear -- a newer GPU generation was observed in the real July 2026
@@ -36,6 +39,11 @@ import json
 
 CATCH_ALL_LABEL = "linux.rocm.gpu"
 
+# Labels that only say "some ROCm GPU" (older MI210/MI250-era runners) and so
+# match almost every AMD runner_type as a substring. They are fallbacks: tried
+# only after every model-specific label has failed to match.
+GENERIC_LABELS = frozenset({CATCH_ALL_LABEL, "rocm", "rocm-docker", "linux-rocm-gpu-1"})
+
 
 def load_gpu_label_mappings(path):
     with open(path) as f:
@@ -45,10 +53,10 @@ def load_gpu_label_mappings(path):
 def match_gpu_label(runner_type, mappings):
     """Return the matching mapping row for runner_type, or None if unmapped.
 
-    The catch-all label is tried last regardless of its position in the
-    mappings list, so it never shadows a more specific label that also
-    happens to be a substring of the same runner_type."""
-    ordered = sorted(mappings, key=lambda m: m["label"] == CATCH_ALL_LABEL)
+    Generic labels (GENERIC_LABELS) are tried last regardless of their
+    position in the mappings list, so they never shadow a more specific label
+    that also happens to be a substring of the same runner_type."""
+    ordered = sorted(mappings, key=lambda m: m["label"] in GENERIC_LABELS)
     for mapping in ordered:
         if mapping["label"] in runner_type:
             return mapping

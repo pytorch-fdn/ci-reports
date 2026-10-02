@@ -973,6 +973,13 @@
     "architecture": "ROCM"
   },
   {
+    "runner": "linux.rocm.gpu.rx7900.1",
+    "instance_family": "amd-radeon-rx-7900-xt",
+    "vendor": "AMD",
+    "model": "AMD Radeon RX 7900 XT",
+    "architecture": "ROCM"
+  },
+  {
     "runner": "linux.rocm.gpu.gfx90a.1",
     "instance_family": "amd-mi250",
     "vendor": "AMD",
@@ -2063,5 +2070,152 @@
     "vendor": "AMD",
     "model": "AMD MI350",
     "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi350.dpx.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi350.dpx.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.gfx950.1-no-dind",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-dpx-linux.rocm.gpu.gfx950.1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-dpx-linux.rocm.gpu.gfx950.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "amd-dpx-linux.rocm.gpu.gfx950.4",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "c-mt-l-x86aavx2-11-41-a10g",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "lf-l-x86aavx2-11-41-a10g",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "lf-l-x86aavx2-11-41-l4",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "mt-l-x86aavx2-11-41-a10g",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "mt-l-x86aavx2-11-41-l4",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "mt-rel-l-x86aavx2-11-41-a10g",
+    "instance_family": "g5",
+    "vendor": "Nvidia",
+    "model": "Nvidia A10G",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "mt-rel-l-x86aavx2-11-41-l4",
+    "instance_family": "g6",
+    "vendor": "Nvidia",
+    "model": "Nvidia L4",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "linux.xpu.dist",
+    "instance_family": "XPU",
+    "vendor": "Intel",
+    "model": "Intel XPU",
+    "architecture": "XPU"
+  },
+  {
+    "runner": "macos-m1-15",
+    "instance_family": "apple-m1",
+    "vendor": "Apple",
+    "model": "Apple M1",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "xcode-27",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "xcode-27-xlarge",
+    "instance_family": "macos",
+    "vendor": "Apple",
+    "model": "macos",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "wincanarylf.windows.12xlarge",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Cascade Lake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "wincanarylf.windows.4xlarge",
+    "instance_family": "c5d",
+    "vendor": "Intel",
+    "model": "Intel Skylake",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "wincanarylf.windows.g4dn.xlarge",
+    "instance_family": "g4dn",
+    "vendor": "Nvidia",
+    "model": "Nvidia T4",
+    "architecture": "Windows"
+  },
+  {
+    "runner": "nvidia-oss-pytorch-gb300-1gpu",
+    "instance_family": "GB300",
+    "vendor": "Nvidia",
+    "model": "Nvidia GB300",
+    "architecture": "CUDA"
   }
 ]
