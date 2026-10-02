@@ -224,6 +224,20 @@ the same check as a CI gate — every architecture `known_architectures()`
 and every entry's `architecture` must be a real, known one (catching a
 typo'd name that would otherwise sit in the file unnoticed).
 
+**GPU label precedence.** An AMD runner_type is priced by substring-matching
+it against `gpu_label_mappings.json`. Model-specific labels (`mi300`,
+`mi350`, `mi355`, `rx7900`, `gfx*`, ...) are always tried before the generic
+ROCm labels (`linux.rocm.gpu`, `rocm`, `rocm-docker`, `linux-rocm-gpu-1`,
+the `GENERIC_LABELS` set in `ci_reports/amd_cost.py`), regardless of file
+order. This supersedes an earlier first-match rule in which only
+`linux.rocm.gpu` was deferred: runner_types such as `linux.rocm.gpu.mi350.1`
+contain the generic `rocm` and were priced at the MI210/MI250 multiplier
+instead of their own. Months computed under the old rule understate AMD
+estimated cost for the affected runner_types; they must be recomputed with
+`--force` (snapshots are otherwise immutable). Because generic labels match
+almost everything, an unmapped *newer* model that contains `rocm` falls back
+to the generic multiplier silently rather than showing up in the gap list.
+
 The source spreadsheet itself is not always internally consistent — the
 same runner_type's implied GPU model can differ between its "AMD
 Financials" tab and its "Instance to Vendor Translations" tab. When

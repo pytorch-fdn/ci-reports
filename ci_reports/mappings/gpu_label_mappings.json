@@ -10,6 +10,11 @@
     "multiplier": 0.5
   },
   {
+    "label": "rx7900",
+    "gpu": "Radeon RX 7900 XT",
+    "multiplier": 0.5
+  },
+  {
     "label": "gfx942",
     "gpu": "MI325",
     "multiplier": 1.5
