@@ -408,7 +408,11 @@ def combine_totals(*totals_dicts):
     return combined
 
 
-def render_pie_svg(title, totals, size=200):
+def render_pie_svg(title, totals, size=200, colors=None):
+    """`colors` optionally maps a label to a color, for pies whose labels
+    aren't architectures (e.g. job outcomes); any label it doesn't name
+    falls back to color_for()."""
+    colors = colors or {}
     total = sum(totals.values())
     if total <= 0:
         return f"<div class='pie-block'><h4>{html.escape(title)}</h4><p>No data.</p></div>"
@@ -420,7 +424,7 @@ def render_pie_svg(title, totals, size=200):
     legend_items = []
     nonzero = [(label, value) for label, value in totals.items() if value > 0]
     for label, value in sorted(nonzero, key=lambda kv: -kv[1]):
-        color = color_for(label)
+        color = colors.get(label) or color_for(label)
         # A single 100% slice has identical start/end points (a full circle
         # in arc terms), which an SVG arc command draws as a zero-length path
         # -- nothing renders. Draw a plain circle for that one-slice case
@@ -572,6 +576,219 @@ def render_pivot_section(
     {note_html}
     <div class="pivot-row">{pies}</div>
     <div class="pivot-row">{tables}</div>
+    """
+
+
+def _fmt_compact(value):
+    if value is None:
+        return "—"
+    abs_value = abs(value)
+    if abs_value >= 1e6:
+        return f"{value / 1e6:,.1f}M"
+    if abs_value >= 1e3:
+        return f"{value / 1e3:,.1f}K"
+    return f"{value:,.0f}"
+
+
+def _fmt_delta(change, as_points=False):
+    """▲/▼ plus a percent (or percentage-point) change; "—" when undefined,
+    e.g. the first month in the archive or one with no runtime data."""
+    if change is None:
+        return "—"
+    arrow = "▲" if change > 0 else "▼" if change < 0 else "•"
+    if as_points:
+        return f"{arrow}{abs(change) * 100:.1f} pts"
+    return f"{arrow}{abs(change) * 100:.0f}%"
+
+
+def render_ci_metrics_section(year_month):
+    """The monthly report's "CI Metrics" tab: what drove that month's CI
+    volume and runtime, versus the previous calendar month. Reads that
+    month's entry (and the prior month's, for the deltas) from
+    ci_metrics_snapshot.json rather than recomputing -- see ci_metrics.py for
+    the aligned-repo rule and why runtime is hours, not dollars."""
+    # Imported here, not at module level: ci_metrics imports discover_months
+    # from this module.
+    from ci_reports.ci_metrics import (
+        NAMED_REPO_SCOPE,
+        OUTCOME_COLORS,
+        TRIGGER_COLORS,
+        load_snapshot,
+        pct_change,
+        prev_month,
+        workflow_movers,
+    )
+
+    snapshot = load_snapshot()
+    entry = snapshot.get(year_month)
+    if entry is None:
+        print(
+            f"{year_month}: no CI metrics snapshot entry -- run "
+            "`python -m ci_reports.ci_metrics_extract` and "
+            "`python -m ci_reports.ci_metrics` first",
+            file=sys.stderr,
+        )
+        return "<h3>CI Metrics</h3><p>CI metrics are not available for this month.</p>"
+
+    prev_entry = snapshot.get(prev_month(year_month))
+
+    def scope_body(scope_key):
+        cur = entry["scopes"][scope_key]
+        prev = prev_entry["scopes"][scope_key] if prev_entry else None
+
+        def prev_value(key):
+            return prev[key] if prev else None
+
+        tiles = [
+            ("PRs opened", _fmt_compact(cur["prs_opened"]), pct_change(cur["prs_opened"], prev_value("prs_opened")), False),
+            ("Jobs run", _fmt_compact(cur["jobs"]), pct_change(cur["jobs"], prev_value("jobs")), False),
+            ("Contributors", _fmt_compact(cur["contributors"]), pct_change(cur["contributors"], prev_value("contributors")), False),
+            ("Runtime hours", _fmt_compact(cur["hours"]), pct_change(cur["hours"], prev_value("hours")), False),
+            ("Hours / PR", "—" if cur["hours_per_pr"] is None else f"{cur['hours_per_pr']:,.1f}", pct_change(cur["hours_per_pr"], prev_value("hours_per_pr")), False),
+            (
+                "Failed + cancelled",
+                "—" if cur["waste_pct"] is None else f"{cur['waste_pct'] * 100:.1f}%",
+                None
+                if cur["waste_pct"] is None or prev_value("waste_pct") is None
+                else cur["waste_pct"] - prev_value("waste_pct"),
+                True,
+            ),
+        ]
+        tiles_html = "".join(
+            f'<div class="kpi"><div class="kpi-label">{html.escape(label)}</div>'
+            f'<div class="kpi-value">{html.escape(value)}</div>'
+            f'<div class="kpi-delta">{_fmt_delta(change, as_points)} vs prior month</div></div>'
+            for label, value, change, as_points in tiles
+        )
+
+        movers = workflow_movers(cur, prev)
+        if movers:
+            mover_rows = []
+            for m in movers:
+                change = "NEW" if m["new"] else _fmt_delta(m["delta_pct"])
+                share = "—" if m["share"] is None else "{:.1f}%".format(m["share"] * 100)
+                mover_rows.append(
+                    f"<tr><td>{html.escape(m['workflow'])}</td><td>{html.escape(m['repo'])}</td>"
+                    f"<td>{m['hours']:,.0f}</td><td>{change}</td><td>{share}</td></tr>"
+                )
+            mover_rows = "\n".join(mover_rows)
+            movers_html = f"""
+    <h4>Top workflows by runtime added vs. prior month</h4>
+    <table>
+      <thead><tr><th>Workflow</th><th>Repo</th><th>Hours</th><th>Δ vs prior month</th><th>Share of hours</th></tr></thead>
+      <tbody>{mover_rows}</tbody>
+    </table>"""
+        else:
+            movers_html = "<p>No runtime data for this month.</p>"
+
+        pies = ""
+        if cur["hours_by_outcome"] is not None:
+            pies += (
+                '<div class="pivot-cell">'
+                + render_pie_svg("Runtime hours by outcome", cur["hours_by_outcome"], colors=OUTCOME_COLORS)
+                + "</div>"
+            )
+        if cur["hours_by_trigger"]:
+            pies += (
+                '<div class="pivot-cell">'
+                + render_pie_svg("Job-hours by trigger", cur["hours_by_trigger"], colors=TRIGGER_COLORS)
+                + "</div>"
+            )
+        rerun = cur["rerun_share"]
+        rerun_note = (
+            f"<p class=\"section-note\">Reruns (attempt 2+) were {rerun * 100:.1f}% of job-hours.</p>"
+            if rerun is not None
+            else ""
+        )
+
+        if scope_key != "aligned":
+            note = (
+                f"{html.escape(scope_key)} only. Runtime by repo is not split by this filter; "
+                "choose all aligned repos to see it."
+            )
+            repo_html = ""
+        else:
+            note = (
+                f"Covers the {cur['repo_count']} repos present in the PR, job and runtime data "
+                "for this month, so the counts and hours describe the same repos."
+            )
+            repo_html = ""
+            total = (cur["hours"] or 0.0) + (entry["hours_non_aligned"] or 0.0)
+            if entry["hours_by_repo"] is not None and total:
+                rows = sorted(entry["hours_by_repo"].items(), key=lambda kv: -kv[1])[:10]
+                rows_html = "\n".join(
+                    f"<tr><td>{html.escape(repo)}</td><td>{hours:,.0f}</td>"
+                    f"<td>{hours / total * 100:.1f}%</td></tr>"
+                    for repo, hours in rows
+                )
+                shown = sum(h for _, h in rows)
+                other_aligned = cur["hours"] - shown
+                repo_html = f"""
+    <h4>Runtime hours by repo</h4>
+    <table>
+      <thead><tr><th>Repo</th><th>Hours</th><th>Share</th></tr></thead>
+      <tbody>
+        {rows_html}
+        <tr><td>Other aligned repos</td><td>{other_aligned:,.0f}</td><td>{other_aligned / total * 100:.1f}%</td></tr>
+        <tr><td>Repos outside the aligned set</td><td>{entry['hours_non_aligned']:,.0f}</td><td>{entry['hours_non_aligned'] / total * 100:.1f}%</td></tr>
+        <tr class="total"><td>Total</td><td>{total:,.0f}</td><td>100.0%</td></tr>
+      </tbody>
+    </table>"""
+
+        return f"""
+    <p class="section-note">{note}
+    Runtime is hours of CI job time across every owning account (LF, Meta, AMD), from CI job
+    records -- it will not equal the Runtime tab's billed instance-hours, and is hours rather than
+    dollars because the AMD cost is derived and the AWS bill has no per-workflow breakdown.
+    Contributors are distinct non-bot PR authors.</p>
+    <div class="kpi-row">{tiles_html}</div>
+    {movers_html}
+    <div class="pivot-row">{pies}</div>
+    {rerun_note}
+    {repo_html}
+    """
+
+    scopes = (("aligned", "All aligned repos"), (NAMED_REPO_SCOPE, f"{NAMED_REPO_SCOPE} only"))
+    options = "".join(
+        f'<option value="{html.escape(key)}">{html.escape(label)}</option>' for key, label in scopes
+    )
+    bodies = "".join(
+        f'<div class="ci-scope-body" data-scope="{html.escape(key)}"{"" if key == "aligned" else " hidden"}>'
+        f"{scope_body(key)}</div>"
+        for key, _ in scopes
+    )
+    # Plain string (not an f-string) so the script's braces need no doubling.
+    script = """
+    <script>
+    (function () {
+      var MONTH = __MONTH__;
+      var select = document.getElementById('ci-scope-select');
+      var link = document.getElementById('ci-trend-link');
+      function apply() {
+        // Carry the chosen repo scope and this month to the trend page's
+        // CI Metrics tab.
+        var params = 'month=' + MONTH;
+        if (select.value !== 'aligned') params = 'scope=' + encodeURIComponent(select.value) + '&' + params;
+        link.href = '../../index.html#ci-metrics?' + params;
+                document.querySelectorAll('.ci-scope-body').forEach(function (el) {
+          el.hidden = el.getAttribute('data-scope') !== select.value;
+        });
+      }
+      var wanted = new URLSearchParams(location.search).get('scope');
+      if (wanted && Array.prototype.some.call(select.options, function (o) { return o.value === wanted; })) {
+        select.value = wanted;
+      }
+      select.addEventListener('change', apply);
+      apply();
+    })();
+    </script>"""
+
+    return f"""
+    <h3>CI Metrics</h3>
+    <p class="section-note"><label>Repos: <select id="ci-scope-select">{options}</select></label></p>
+    {bodies}
+    <p><a id="ci-trend-link" href="../../index.html#ci-metrics">See this trend across months &rarr;</a></p>
+    {script.replace('__MONTH__', json.dumps(year_month))}
     """
 
 
@@ -1071,6 +1288,8 @@ def render_report(year_month):
         note="Linux is the default OS -- the other rows are OS exceptions.",
     )
 
+    ci_metrics_section = render_ci_metrics_section(year_month)
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1093,8 +1312,14 @@ def render_report(year_month):
   .toggle {{ margin: 1rem 0; }}
   .toggle button {{ padding: 0.4rem 1rem; border: 1px solid #999; background: #f4f4f4; cursor: pointer; font-size: 0.95rem; }}
   .toggle button:first-child {{ border-radius: 4px 0 0 4px; }}
-  .toggle button:last-child {{ border-radius: 0 4px 4px 0; border-left: none; }}
+  .toggle button + button {{ border-left: none; }}
+  .toggle button:last-child {{ border-radius: 0 4px 4px 0; }}
   .toggle button.active {{ background: #2a78d6; color: #fff; border-color: #2a78d6; }}
+  .kpi-row {{ display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1rem 0; }}
+  .kpi {{ flex: 1 1 140px; border: 1px solid #ccc; border-radius: 4px; padding: 0.6rem 0.8rem; }}
+  .kpi-label {{ font-size: 0.8rem; color: #666; }}
+  .kpi-value {{ font-size: 1.4rem; font-weight: bold; }}
+  .kpi-delta {{ font-size: 0.8rem; color: #666; }}
 </style>
 </head>
 <body>
@@ -1130,6 +1355,7 @@ def render_report(year_month):
 <div class="toggle">
   <button id="btn-financials" class="active">Financials</button>
   <button id="btn-runtime">Runtime</button>
+  <button id="btn-ci-metrics">CI Metrics</button>
 </div>
 
 <div id="financials-view">
@@ -1144,33 +1370,33 @@ def render_report(year_month):
 {runtime_os_section}
 </div>
 
+<div id="ci-metrics-view" style="display:none">
+{ci_metrics_section}
+</div>
+
 {render_coverage_gaps(gaps)}
 
 <script>
-  const btnFin = document.getElementById('btn-financials');
-  const btnRun = document.getElementById('btn-runtime');
-  const finView = document.getElementById('financials-view');
-  const runView = document.getElementById('runtime-view');
+  const views = {{
+    financials: {{ button: document.getElementById('btn-financials'), view: document.getElementById('financials-view') }},
+    runtime: {{ button: document.getElementById('btn-runtime'), view: document.getElementById('runtime-view') }},
+    'ci-metrics': {{ button: document.getElementById('btn-ci-metrics'), view: document.getElementById('ci-metrics-view') }},
+  }};
 
-  function showFinancials() {{
-    btnFin.classList.add('active');
-    btnRun.classList.remove('active');
-    finView.style.display = '';
-    runView.style.display = 'none';
+  function showView(name) {{
+    for (const [key, v] of Object.entries(views)) {{
+      v.button.classList.toggle('active', key === name);
+      v.view.style.display = key === name ? '' : 'none';
+    }}
   }}
 
-  function showRuntime() {{
-    btnRun.classList.add('active');
-    btnFin.classList.remove('active');
-    runView.style.display = '';
-    finView.style.display = 'none';
+  for (const name of Object.keys(views)) {{
+    views[name].button.addEventListener('click', () => showView(name));
   }}
 
-  btnFin.addEventListener('click', showFinancials);
-  btnRun.addEventListener('click', showRuntime);
-
-  if (new URLSearchParams(window.location.search).get('view') === 'runtime') {{
-    showRuntime();
+  const requestedView = new URLSearchParams(window.location.search).get('view');
+  if (requestedView && views[requestedView]) {{
+    showView(requestedView);
   }}
 </script>
 
@@ -1181,14 +1407,18 @@ def render_report(year_month):
 
 def main():
     if len(sys.argv) != 2:
-        print("usage: python -m ci_reports.render <YYYY-MM>", file=sys.stderr)
+        print("usage: python -m ci_reports.render <YYYY-MM | --all>", file=sys.stderr)
         sys.exit(1)
-    year_month = sys.argv[1]
+    # --all renders only months discover_months() counts (those with
+    # focus_totals.json), not every data/<YYYY-MM>/ folder: the CI-metrics
+    # extract creates a month's folder on its own, before it can be rendered.
+    months = discover_months() if sys.argv[1] == "--all" else [sys.argv[1]]
 
-    report_html = render_report(year_month)
-    out_path = DATA_ROOT / year_month / "report.html"
-    out_path.write_text(report_html)
-    print(f"{year_month}: wrote {out_path}")
+    for year_month in months:
+        report_html = render_report(year_month)
+        out_path = DATA_ROOT / year_month / "report.html"
+        out_path.write_text(report_html)
+        print(f"{year_month}: wrote {out_path}")
 
 
 if __name__ == "__main__":
