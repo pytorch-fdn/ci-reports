@@ -88,6 +88,7 @@ test:
 	uv run python tests/test_sheet_import.py
 	uv run python tests/test_architecture_sources.py
 	uv run python tests/test_ci_metrics.py
+	uv run python tests/test_lf_hosted_exclusion.py
 
 lint:
 	prek run --all-files
