@@ -65,9 +65,40 @@ caveat must appear on every page, not just a README/footnote once.
 | Section | Source | Fidelity |
 |---|---|---|
 | LF Financials + LF Runtime | FOCUS Parquet export (S3) via `ci_reports/focus_extract.py` | Exact match to the sheet, verified to the cent for a full month |
-| Meta cost/duration by runner type | ClickHouse `misc.runner_cost`, `owning_account='meta'` | Recomputed, see below — will not byte-match old published sheets |
+| Meta cost/duration by runner type | ClickHouse `misc.runner_cost`, `owning_account='meta'`, minus LF-hosted runner types (see below) | Recomputed, see below — will not byte-match old published sheets |
 | AMD cost/duration by runner type | Same table, `owning_account='amd'`; cost is always 0 upstream, derived from duration × GPU count × a per-model multiplier | Recomputed, methodology-verified, not byte-matched |
-| Intel-jobs breakout (LF / Meta) | Same table, filtered by job-name regex; scoped to `owning_account` `linux_foundation`/`meta` specifically (not "not LF") so AMD, whose cost is always 0 upstream, can't bleed into either side | Recomputed; carved out of LF's/Meta's own architecture totals into an explicit "XPU" bucket rather than added on top, see `redistribute_intel_jobs_to_xpu()` in `ci_reports/render.py` |
+| Intel-jobs breakout (LF / Meta) | Same table, filtered by job-name regex; scoped to `owning_account` `linux_foundation`/`meta` specifically (not "not LF") so AMD, whose cost is always 0 upstream, can't bleed into either side. `meta` rows on LF-hosted runner types are moved to the LF side | Recomputed; carved out of LF's/Meta's own architecture totals into an explicit "XPU" bucket rather than added on top, see `redistribute_intel_jobs_to_xpu()` in `ci_reports/render.py` |
+
+### ClickHouse never supplies cost or hours for LF-hosted capacity
+
+FOCUS is the source of truth for everything that runs in LF's AWS account.
+ClickHouse is only an extra source for what FOCUS can't provide: Meta- and
+AMD-hosted cost, and job-level detail (the Intel-jobs/XPU breakout, CI
+Metrics).
+
+`misc.runner_cost` does not reliably attribute LF-hosted runners to
+`owning_account='linux_foundation'`. The shared OSDC cluster's `lf-` labels
+(and so `lf-rel-`), their `c-lf-` canaries, and the `wincanarylf.` Windows
+canary fleet appear under `owning_account='meta'`; the same `wincanarylf.`
+runner types have been tagged `linux_foundation` in other months. This
+supersedes the earlier behaviour of taking every `meta` row at face value,
+which counted that capacity twice, once in the LF total from FOCUS and again
+in the Meta total from ClickHouse. The overstatement covered both cost and
+Runtime hours, and grew from the first month the OSDC cluster carried
+production traffic.
+
+`split_lf_hosted()` in `ci_reports/render.py` (keyed on
+`LF_HOSTED_PREFIXES`) drops these runner types from every Meta input at
+render time: cost, Runtime, the OS pivot, and the XPU carve-out. Matching
+Intel-jobs rows are not dropped; they move to the LF side of the carve-out,
+so the XPU detail survives as a reallocation within LF's FOCUS buckets. The
+raw extracts on disk are left unfiltered for auditability, so fixing this
+needed no ClickHouse re-pull. Months snapshotted before the change must be
+recomputed with `snapshot --force`.
+
+CI Metrics is unaffected. Its runtime hours come only from ClickHouse,
+across every `owning_account`, and are never added to FOCUS figures, so
+there is nothing to count twice.
 
 ### Meta/AMD figures are intentionally recomputed, not imported from the sheet
 

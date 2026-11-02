@@ -154,6 +154,32 @@ ENV_PREFIXES = (
 )
 
 
+# Runner types hosted in LF's own AWS account -- the shared OSDC cluster's
+# `lf-` labels (which also covers `lf-rel-`), their `c-lf-` canaries, and the
+# `wincanarylf.` Windows canary fleet. ClickHouse can tag these
+# `owning_account = 'meta'` (and has tagged the same `wincanarylf.` runner
+# types `linux_foundation` in other months), but their cost already lands in
+# LF's FOCUS billing export, so counting them on the Meta side too would
+# count that capacity twice. See split_lf_hosted().
+LF_HOSTED_PREFIXES = ("lf-", "c-lf-", "wincanarylf.")
+
+
+def is_lf_hosted(runner_type):
+    return runner_type.startswith(LF_HOSTED_PREFIXES)
+
+
+def split_lf_hosted(rows):
+    """Splits ClickHouse rows into (not_lf_hosted, lf_hosted) by runner_type.
+
+    ClickHouse is only an extra source for what FOCUS can't provide (Meta-
+    and AMD-hosted cost, job-level detail); it never supplies cost or hours
+    for LF-hosted capacity, which FOCUS already covers in full."""
+    kept, lf_hosted = [], []
+    for row in rows:
+        (lf_hosted if is_lf_hosted(row["runner_type"]) else kept).append(row)
+    return kept, lf_hosted
+
+
 def resolve_arch(runner_type, runner_to_arch):
     if runner_type in runner_to_arch:
         return runner_to_arch[runner_type]
@@ -839,6 +865,15 @@ def compute_month_totals(year_month):
     with open(ch_dir / "intel_jobs_excluding_lf.json") as f:
         intel_jobs_meta = json.load(f)
 
+    # LF-hosted runner types are already in lf_total via FOCUS, so drop them
+    # from every Meta input (cost, runtime, OS and the XPU carve-out alike).
+    # Their Intel-jobs rows move to the LF side of the carve-out instead of
+    # being dropped, so the job-level XPU detail ClickHouse supplies is kept
+    # -- reallocated within LF's FOCUS buckets rather than Meta's.
+    meta_rows, _ = split_lf_hosted(meta_rows)
+    intel_jobs_meta, intel_jobs_meta_lf_hosted = split_lf_hosted(intel_jobs_meta)
+    intel_jobs_lf = intel_jobs_lf + intel_jobs_meta_lf_hosted
+
     runner_to_arch, family_to_arch, gpu_mappings = load_lookup_tables()
 
     meta_arch, meta_total, meta_unmapped_arch = bucket_meta(meta_rows, runner_to_arch)
@@ -1347,6 +1382,9 @@ def render_report(year_month):
 
 <h2>Meta (from ClickHouse -- estimated)</h2>
 <p>Estimated total: ${meta_total:,.2f}</p>
+<p><em>Note: excludes LF-hosted runner types (e.g. <code>lf-</code>
+  labels on the shared cluster), even where ClickHouse attributes them to
+  Meta -- their cost is already in the LF total above.</em></p>
 
 <h2>AMD (from ClickHouse duration x AMD-provided multiplier -- estimated)</h2>
 <p>Estimated total: ${amd_total:,.2f}</p>

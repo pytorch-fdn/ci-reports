@@ -230,6 +230,7 @@ Output lands in `data/<YYYY-MM>/report.html`; open it directly in a browser.
 uv run python tests/test_focus_extract.py  # synthetic duckdb fixture
 uv run python tests/test_amd_cost.py       # synthetic AMD multiplier fixture
 uv run python tests/test_ci_metrics.py     # synthetic CI Metrics aggregation fixture
+uv run python tests/test_lf_hosted_exclusion.py  # synthetic LF-hosted-runner exclusion fixture
 ```
 
 (`pytest` is not currently a dependency; the test file also runs directly.)

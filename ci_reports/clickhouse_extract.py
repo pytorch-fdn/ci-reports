@@ -18,6 +18,12 @@ Meta and AMD do not double-count: AMD rows pass the "exclude Owner LF"
 filter too, but always carry cost = 0 in ClickHouse (see amd_cost.py for how
 AMD's actual cost is derived from duration instead).
 
+Meta and LF do double-count at this layer: LF-hosted runner types (e.g. the
+shared cluster's `lf-` labels) can carry `owning_account = 'meta'` even
+though their cost is already in LF's FOCUS export. They are left in the raw
+extract on purpose and dropped at render time instead -- see
+render.split_lf_hosted().
+
 A previously published month's Meta/AMD numbers can differ from a fresh
 recompute here by more than expected backfill drift alone: HUD's own
 dashboard (torchci/pages/cost_analysis.tsx) parses its date-range params
