@@ -112,6 +112,13 @@
     "architecture": "ROCM"
   },
   {
+    "runner": "linux.rocm.gpu.gfx950.1.new-image",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
     "runner": "do-linux.rocm.gpu.gfx950.2",
     "instance_family": "amd-mi350",
     "vendor": "AMD",
@@ -1365,7 +1372,21 @@
     "architecture": "ROCM"
   },
   {
+    "runner": "linux.rocm.gpu.mi350.1.dpx.nps1",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
     "runner": "linux.rocm.gpu.mi350.2",
+    "instance_family": "amd-mi350",
+    "vendor": "AMD",
+    "model": "AMD MI350",
+    "architecture": "ROCM"
+  },
+  {
+    "runner": "linux.rocm.gpu.mi350.dpx.4",
     "instance_family": "amd-mi350",
     "vendor": "AMD",
     "model": "AMD MI350",
@@ -1520,6 +1541,13 @@
   },
   {
     "runner": "macos-m2-26",
+    "instance_family": "apple-m2",
+    "vendor": "Apple",
+    "model": "Apple M2",
+    "architecture": "macOS"
+  },
+  {
+    "runner": "macos-m2-27",
     "instance_family": "apple-m2",
     "vendor": "Apple",
     "model": "Apple M2",
@@ -2213,6 +2241,13 @@
   },
   {
     "runner": "nvidia-oss-pytorch-gb300-1gpu",
+    "instance_family": "GB300",
+    "vendor": "Nvidia",
+    "model": "Nvidia GB300",
+    "architecture": "CUDA"
+  },
+  {
+    "runner": "nv-l-arm64grace-16-200-gb300",
     "instance_family": "GB300",
     "vendor": "Nvidia",
     "model": "Nvidia GB300",
